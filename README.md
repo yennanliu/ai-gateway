@@ -44,8 +44,8 @@ make lint        # ruff + mypy
 Building per the [implementation plan](doc/implementation-plan.md), test-first:
 
 - [x] **M0** — Bootstrap & CI (workspace, FastAPI `/healthz`, test harness, Vue scaffold, CI)
-- [ ] **M1** — Data model & migrations
-- [ ] M2 — Governance API & RBAC
+- [x] **M1** — Data model & migrations (13 entities, cascades, scope resolution, Alembic)
+- [ ] **M2** — Governance API & RBAC
 - [ ] M3 — LiteLLM integration & config compiler
 - [ ] M4 — Metering, budgets & guardrails
 - [ ] M5 — Usage aggregation & billing
