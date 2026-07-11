@@ -47,7 +47,7 @@ Building per the [implementation plan](doc/implementation-plan.md), test-first:
 - [x] **M1** — Data model & migrations (13 entities, cascades, scope resolution, Alembic)
 - [x] **M2** — Governance API & RBAC (org/team/user/membership/app CRUD, virtual-key lifecycle, RBAC, audit)
 - [x] **M3** — LiteLLM integration & config compiler (custom-auth, compile→write→reload, real-LiteLLM routing/fallback test)
-- [ ] **M4** — Metering, budgets & guardrails
+- [x] **M4** — Metering, budgets, rate limits & guardrails
 - [ ] M5 — Usage aggregation & billing
 - [ ] M6 — Vue admin UI
 - [ ] M7 — Local DX polish
