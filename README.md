@@ -38,6 +38,29 @@ make dev
 Open http://localhost:5173 and sign in with the dev principal (user `admin`,
 the org id printed by `make seed`, roles `org-admin`).
 
+### Running backend and frontend separately
+
+`make dev` runs everything together; you can also run each side on its own
+(handy when you only touch one, or want separate log streams):
+
+```bash
+make api    # backend only — governance-api on :8080 (hot reload)
+make ui     # frontend only — Vue dev server on :5173 (hot reload)
+```
+
+Notes:
+- Run `make migrate && make seed` once before `make api` so the DB exists and
+  has demo data.
+- The Vue dev server proxies `/api` → `http://localhost:8080`, so **start the
+  backend before the UI** if you want live data (the UI still loads without it —
+  requests just fail until the backend is up).
+- Optional: the stub LLM provider (only needed for actual model calls through
+  the proxy) runs on its own:
+
+  ```bash
+  uv run python scripts/stub_provider.py   # :9099
+  ```
+
 Test / lint:
 
 ```bash
