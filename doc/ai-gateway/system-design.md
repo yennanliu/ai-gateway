@@ -1,8 +1,10 @@
 # AI Gateway — System Design
 
-> **Status:** Draft v1
+> **Status:** Draft v2
 > **Author:** Platform team
-> **Related:** [`litellm-evaluation.md`](./litellm-evaluation.md)
+> **Related:** [`litellm-evaluation.md`](./litellm-evaluation.md) · [`implementation-plan.md`](./implementation-plan.md)
+>
+> **Stack decisions (v2):** Backend **Python + FastAPI**, managed with **uv**; **SQLite** as the default datastore (Postgres optional at scale); frontend **Vue 3**; **test-driven development (TDD)** throughout; a **simple single-command local dev** path is a first-class requirement.
 
 This document specifies the architecture for **AI Gateway**, a self-hostable enterprise LLM gateway built on top of **[LiteLLM Proxy](https://docs.litellm.ai/docs/simple_proxy)**. It follows the decision from the evaluation memo: *embed LiteLLM as the routing/adapter core (data plane) and build the product value one layer up (control plane) — org/team governance, billing, compliance/audit, and Agent Builder integration.*
 
@@ -28,8 +30,9 @@ This document specifies the architecture for **AI Gateway**, a self-hostable ent
 | Availability | 99.9% (data plane), 99.5% (control plane) |
 | Throughput | Horizontally scalable; 5k+ concurrent streams per proxy fleet |
 | Streaming | First-token passthrough, no buffering of full response |
-| Deployment | Docker Compose (small/on-prem) and Kubernetes/Helm (scale) |
+| Deployment | Single-command local dev; Docker Compose (small/on-prem); Kubernetes/Helm (scale) |
 | Data residency | All request/response data can stay within a customer VPC/on-prem |
+| Local dev | Runs on a laptop with **no external services** — SQLite file, in-process cache, stubbed providers |
 
 ### 1.3 Non-goals (v1)
 
@@ -75,8 +78,8 @@ flowchart TB
     end
 
     subgraph Shared[Shared stores]
-        PG[(Postgres<br/>keys, spend, orgs, audit)]
-        SECRETS[[Secrets Manager<br/>Vault / KMS]]
+        PG[(SQLite default / Postgres at scale<br/>keys, spend, orgs, audit)]
+        SECRETS[[Secrets provider<br/>.env dev · Vault/KMS prod]]
         OBS[Observability<br/>OTel · Prometheus · Langfuse]
     end
 
@@ -100,7 +103,9 @@ flowchart TB
 
 - **LiteLLM is the data plane, not the product.** We run it as stateless proxy replicas and extend it via its callback/hook system rather than forking it. Provider adapters, routing, retries, and virtual-key auth come for free and stay current with vendor API changes.
 - **The control plane is our own service.** Governance, billing, RBAC/SSO, and the branded admin UI live in code we own, backed by our own schema. This is where product differentiation lives and where we avoid the "LiteLLM + a UI skin" trap called out in the evaluation.
-- **The two planes share Postgres + Redis + Secrets** but have separate failure domains: if the control plane is down, in-flight inference keeps working from cached config.
+- **The two planes share one datastore (SQLite by default, Postgres at scale) + an optional cache + a secrets provider** but have separate failure domains: if the control plane is down, in-flight inference keeps working from cached config.
+- **Datastore is pluggable via SQLAlchemy.** SQLite (a single file) is the default — zero-ops for local dev and small on-prem installs; switch to Postgres for HA/scale by changing one connection string. We deliberately keep our own store as the source of truth for keys/spend (via LiteLLM custom-auth hooks) rather than depending on LiteLLM's Prisma/Postgres key store, so SQLite stays viable end-to-end.
+- **The cache (Redis) is optional.** Locally it falls back to an in-process implementation so nothing external is required; in production Redis provides shared rate-limit counters and caching across proxy replicas.
 
 ---
 
@@ -135,10 +140,10 @@ Implemented as LiteLLM custom callbacks / `CustomLogger` and pre/post-call guard
 - Branded web app (Next.js/React). Admin console (governance, model config, billing, audit) + self-serve developer portal (create keys, view usage, playground).
 
 ### 3.7 Shared stores
-- **Postgres** — LiteLLM tables (keys, teams, spend logs) + our schema (orgs, policies, audit, rating).
-- **Redis** — response/semantic cache, rate-limit counters, router health/state, key cache.
-- **Secrets Manager** — HashiCorp Vault or cloud KMS/Secrets Manager for provider keys and signing material.
-- **Observability** — OTel collector → Prometheus/Grafana (metrics), Loki/ELK (logs), Langfuse (LLM traces).
+- **Relational DB (SQLAlchemy)** — our full schema (orgs, teams, users, keys, spend, policies, audit, rating). **SQLite** file by default; **Postgres** at scale. Same models/migrations for both.
+- **Cache (optional)** — **Redis** in production for shared cache, rate-limit counters, router health/state, key cache; **in-process fallback** for local dev so no external service is needed.
+- **Secrets provider (pluggable)** — `.env`/file-based dev provider locally; **Vault** or cloud **KMS/Secrets Manager** in production for provider keys and signing material.
+- **Observability** — OTel collector → Prometheus/Grafana (metrics), Loki/ELK (logs), Langfuse (LLM traces). Optional locally.
 
 ---
 
@@ -208,13 +213,13 @@ sequenceDiagram
     end
 ```
 
-Key properties: streaming is not buffered (guardrails on streams run on chunks or on a post-hoc sample per policy); spend logging is async/non-blocking on the hot path where possible; a control-plane outage does not stop inference because key/budget scope is cached in Redis.
+Key properties: streaming is not buffered (guardrails on streams run on chunks or on a post-hoc sample per policy); spend logging is async/non-blocking on the hot path where possible; a control-plane outage does not stop inference because key/budget scope is cached (Redis in prod, in-process locally). Virtual-key validation is done via LiteLLM's **custom-auth hook** against our own store, so no LiteLLM Prisma/Postgres key store is required.
 
 ---
 
 ## 6. Data Model (control-plane schema)
 
-Simplified core entities (our schema; LiteLLM owns its own key/spend tables which we join against or mirror):
+Simplified core entities. This is **our** schema and the single source of truth for keys and spend — we do not use LiteLLM's own key/spend tables (LiteLLM authenticates via a custom-auth hook that calls back into this store). Defined once with SQLAlchemy models + Alembic migrations; runs on SQLite (default) or Postgres unchanged. `jsonb` columns below map to native `JSONB` on Postgres and `JSON`/`TEXT` on SQLite; array columns map to a JSON column on SQLite.
 
 ```
 Org(id, name, plan, data_region, created_at)
@@ -249,28 +254,46 @@ The control plane is the source of truth; LiteLLM config is a derived artifact.
 
 ```mermaid
 flowchart LR
-    UI[Admin UI] --> API[Governance API]
-    API --> DB[(Postgres registry)]
+    UI[Vue Admin UI] --> API[Governance API]
+    API --> DB[(SQLite / Postgres registry)]
     API --> GEN[Config compiler]
-    GEN --> CFG[LiteLLM config + key store]
+    GEN --> CFG[LiteLLM config file]
     CFG --> RELOAD[Hot reload / rolling restart]
     RELOAD --> PROXY[LiteLLM Proxy fleet]
-    API -. cache invalidation .-> REDIS[(Redis)]
+    API -. cache invalidation .-> REDIS[(Cache: Redis / in-process)]
 ```
 
-Flow: admin edits a model/policy → Governance API validates + writes to Postgres → config compiler renders LiteLLM's model/router config and upserts virtual keys → proxy hot-reloads and Redis caches are invalidated. This keeps YAML out of human hands in production (a top risk in the evaluation) and makes every config change audited and reversible.
+Flow: admin edits a model/policy → Governance API validates + writes to the DB → config compiler renders LiteLLM's model/router config → proxy hot-reloads and caches are invalidated. Virtual keys live in our DB and are validated via LiteLLM's custom-auth hook (no separate key store to sync). This keeps YAML out of human hands in production (a top risk in the evaluation) and makes every config change audited and reversible.
 
 ---
 
 ## 8. Deployment Topologies
 
+### 8.0 Local development (keep it simple)
+The primary rule: **a developer can clone and run the whole thing with one command and no external services.**
+
+- **Toolchain:** [uv](https://docs.astral.sh/uv/) for Python (fast, reproducible, single lockfile) and Node/pnpm for the Vue app.
+- **One command:** `make dev` (or `./scripts/dev.sh`) starts, via `uv run`, the governance API (uvicorn), the LiteLLM proxy, and the Vue dev server (Vite) with hot reload.
+- **No external deps:** datastore is a local **SQLite file** (`./ai-gateway.db`); cache falls back to **in-process**; secrets come from **`.env`**; providers can be **stubbed** (a mock provider) so no real API key is needed to click around.
+- **Seed:** `uv run scripts/seed.py` creates a demo org/team, one virtual key, and one model deployment (pointed at the stub, or a real provider via `.env`).
+- **Tests:** `uv run pytest` runs the full suite against in-memory SQLite with providers stubbed — fast, hermetic, no network. This is the inner loop for TDD (see the implementation plan).
+
+```
+# typical local loop
+uv sync                     # install pinned deps
+uv run alembic upgrade head # create SQLite schema
+uv run scripts/seed.py      # demo data
+make dev                    # api + proxy + vue, all hot-reloading
+uv run pytest -q            # red/green/refactor
+```
+
 ### 8.1 Small / on-prem (Docker Compose)
-Single node or small cluster: `edge`, `litellm-proxy` (1–2), `governance-api`, `billing`, `admin-ui`, `postgres`, `redis`, `vault`. Fits the private-cloud / data-sovereignty story with everything inside the customer boundary.
+Single node or small cluster: `edge`, `litellm-proxy` (1–2), `governance-api`, `billing`, `admin-ui`. Datastore can stay **SQLite on a mounted volume** for light installs, or add **Postgres + Redis + Vault** containers when the customer needs HA. Everything runs inside the customer boundary for the private-cloud / data-sovereignty story.
 
 ### 8.2 Scale (Kubernetes + Helm)
 - LiteLLM proxy as a horizontally-autoscaled `Deployment` (HPA on CPU + concurrency).
 - Control-plane services as separate deployments (independent scaling/failure domain).
-- Managed Postgres (HA) + Redis (cluster/sentinel); Vault or cloud KMS; OTel collector as DaemonSet.
+- Managed **Postgres** (HA) + Redis (cluster/sentinel) — swap from SQLite by changing the connection string; Vault or cloud KMS; OTel collector as DaemonSet.
 - Blue/green or rolling for proxy config reloads; PodDisruptionBudgets for availability.
 
 ### 8.3 Multi-region / residency
@@ -280,7 +303,7 @@ Per-region data-plane stacks so request/response data never leaves the region; c
 
 ## 9. Security & Compliance
 
-- **Secrets:** provider keys only in Vault/KMS; app DB stores references, never plaintext. Envelope encryption; automatic rotation supported.
+- **Secrets:** provider keys in the secrets provider (Vault/KMS in prod, `.env` for local dev only); app DB stores references, never plaintext. Envelope encryption; automatic rotation supported.
 - **Key hygiene:** virtual keys stored hashed; scoped, expirable, instantly revocable.
 - **Isolation:** row-level org scoping on every query; tenant data segregation enforced in the API layer.
 - **Transport & at-rest:** TLS everywhere; DB and secret stores encrypted at rest.
@@ -303,62 +326,81 @@ Per-region data-plane stacks so request/response data never leaves the region; c
 
 ## 11. Project Structure
 
-Monorepo. LiteLLM is a pinned dependency/image we configure and extend — not vendored/forked.
+Monorepo. Python is managed by **uv** with a single workspace lockfile; the Vue app has its own `package.json`. LiteLLM is a pinned dependency we configure and extend — not vendored/forked. Tests live **next to the code** (`tests/` per package) so TDD stays close to the unit under test.
 
 ```
 ai-gateway/
 ├── README.md
+├── Makefile                            # `make dev`, `make test`, `make seed`, `make lint`
+├── pyproject.toml                      # uv workspace root (members: control-plane/*, data-plane)
+├── uv.lock                             # single pinned lockfile for all Python
+├── .env.example                        # local dev config (SQLite path, stub provider, etc.)
+│
 ├── doc/
 │   └── ai-gateway/
 │       ├── litellm-evaluation.md
-│       └── system-design.md            # this document
+│       ├── system-design.md            # this document
+│       └── implementation-plan.md      # TDD build plan
 │
 ├── deploy/
-│   ├── docker-compose/                 # on-prem / dev topology
+│   ├── docker-compose/                 # on-prem topology (sqlite volume or +postgres/redis)
 │   │   ├── docker-compose.yml
 │   │   └── .env.example
 │   ├── helm/                           # k8s charts (proxy, control plane, deps)
 │   │   └── ai-gateway/
-│   └── terraform/                      # cloud infra (VPC, DB, Redis, KMS)
+│   └── terraform/                      # cloud infra (VPC, Postgres, Redis, KMS)
 │
 ├── data-plane/
 │   ├── litellm/
 │   │   ├── config.template.yaml        # rendered from registry, not hand-edited
 │   │   └── entrypoint.sh
 │   └── hooks/                          # our LiteLLM custom callbacks/plugins
-│       ├── guardrails/                 # PII, injection, moderation, schema
-│       ├── metering.py                 # token accounting + spend reconciliation
-│       ├── audit.py                    # audit-event emission
-│       └── logger.py                   # OTel/Langfuse export
+│       ├── src/hooks/
+│       │   ├── auth.py                  # custom-auth: validate virtual key vs our DB
+│       │   ├── guardrails/             # PII, injection, moderation, schema
+│       │   ├── metering.py             # token accounting + spend write
+│       │   ├── audit.py                # audit-event emission
+│       │   └── logger.py               # OTel/Langfuse export
+│       ├── pyproject.toml
+│       └── tests/                      # hook unit tests (stubbed proxy context)
 │
 ├── control-plane/
 │   ├── governance-api/                 # orgs/teams/users/keys/policies/registry
-│   │   ├── app/
-│   │   │   ├── api/                     # routers (rest)
-│   │   │   ├── domain/                  # entities + policy resolution
-│   │   │   ├── services/                # key lifecycle, config compiler
-│   │   │   ├── repositories/            # postgres access
-│   │   │   ├── secrets/                 # vault/kms adapters
+│   │   ├── src/governance_api/
+│   │   │   ├── api/                     # FastAPI routers
+│   │   │   ├── domain/                  # entities + policy/budget resolution
+│   │   │   ├── services/               # key lifecycle, config compiler
+│   │   │   ├── db/                      # SQLAlchemy models + session (SQLite/Postgres)
+│   │   │   ├── secrets/                # env(dev) / vault(prod) adapters
 │   │   │   └── auth/                    # oidc/saml, rbac
-│   │   ├── migrations/                  # alembic
-│   │   └── tests/
+│   │   ├── migrations/                  # alembic (SQLite + Postgres compatible)
+│   │   ├── pyproject.toml
+│   │   └── tests/                       # unit + api tests (in-memory SQLite)
 │   ├── billing/                        # usage aggregation, rating, invoices/exports
-│   │   ├── app/
+│   │   ├── src/billing/
+│   │   ├── pyproject.toml
 │   │   └── tests/
-│   └── config-compiler/                # registry -> litellm config + key upserts
+│   └── config-compiler/                # registry -> litellm config (shared lib)
+│       ├── src/config_compiler/
+│       └── tests/
 │
-├── admin-ui/                           # next.js console + self-serve portal
-│   ├── app/
-│   ├── components/
-│   └── lib/
+├── admin-ui/                           # Vue 3 + Vite + TypeScript
+│   ├── src/
+│   │   ├── views/                       # pages (dashboard, keys, models, usage, audit)
+│   │   ├── components/
+│   │   ├── stores/                      # Pinia state
+│   │   ├── api/                         # typed client (generated from OpenAPI)
+│   │   └── router/                      # vue-router
+│   ├── tests/                           # vitest + Vue Test Utils
+│   ├── package.json
+│   └── vite.config.ts
 │
-├── packages/                           # shared libs
-│   ├── schemas/                        # shared types / openapi / pydantic models
-│   └── clients/                        # internal service clients
+├── packages/                           # shared Python libs
+│   └── schemas/                        # pydantic models / OpenAPI (source for UI client)
 │
-├── scripts/                            # seed, migrate, load-test, key-rotate
+├── scripts/                            # dev.sh, seed.py, key-rotate.py, load-test
 └── tests/
-    ├── integration/                    # end-to-end request-path tests
+    ├── integration/                    # end-to-end request-path (spins api+proxy)
     └── load/                           # k6/locust throughput + latency
 ```
 
@@ -368,17 +410,22 @@ ai-gateway/
 
 | Layer | Choice | Rationale |
 |---|---|---|
-| Data-plane core | **LiteLLM Proxy** (pinned) | Provider adapters, routing, virtual keys, spend logging out of the box |
+| Data-plane core | **LiteLLM Proxy** (pinned) | Provider adapters, routing, fallback out of the box |
 | Hooks/guardrails | **Python** (LiteLLM callbacks) | Runs in-process with the proxy; same language |
-| Control-plane API | **Python + FastAPI** | One language across proxy + control plane for a small team |
-| Admin UI | **Next.js / React + TypeScript** | Branded console + self-serve portal, SSR |
-| Metadata DB | **Postgres** | Shared with LiteLLM; strong relational + jsonb for policies |
-| Cache / state | **Redis** | Cache, rate-limit counters, router state, key cache |
-| Secrets | **Vault** or cloud **KMS/Secrets Manager** | Keep provider keys out of the app DB |
+| Control-plane API | **Python + FastAPI** | Async, OpenAPI-native; one language across proxy + control plane |
+| Python packaging | **uv** | Fast, reproducible installs; single workspace lockfile for all Python |
+| Testing | **pytest** (+ **vitest** for UI); **TDD** | Fast hermetic suite on in-memory SQLite; test-first is the default workflow |
+| ORM / migrations | **SQLAlchemy + Alembic** | One data layer that runs unchanged on SQLite and Postgres |
+| Datastore | **SQLite (default) → Postgres (scale)** | Zero-ops local/on-prem; swap connection string for HA |
+| Admin UI | **Vue 3 + Vite + TypeScript + Pinia** | Requested FE; fast dev server, typed client generated from OpenAPI |
+| Cache / state | **Redis (prod) / in-process (local)** | Shared counters+cache at scale; nothing external for local dev |
+| Secrets | **`.env` (dev) → Vault/KMS (prod)** | Keep provider keys out of the app DB; simple locally |
 | Identity | **OIDC/SAML** (Keycloak or IdP) | Enterprise SSO for the console |
-| Observability | **OTel + Prometheus/Grafana + Langfuse** | Metrics + LLM tracing |
-| Packaging | **Docker + Helm + Terraform** | On-prem Compose and scaled k8s from one codebase |
+| Observability | **OTel + Prometheus/Grafana + Langfuse** | Metrics + LLM tracing (optional locally) |
+| Packaging | **Docker + Helm + Terraform** | Local Compose and scaled k8s from one codebase |
 
+> **Local-first principle:** every production dependency (Postgres, Redis, Vault, OTel) has a zero-config local fallback (SQLite, in-process cache, `.env`, no-op exporter) so the inner dev/test loop needs nothing but `uv` and Node.
+>
 > If p99 gateway overhead becomes a bottleneck, the hooks/guardrails layer (not the control plane) is the candidate to rewrite in Go — but start in Python to keep the team on one stack.
 
 ---
