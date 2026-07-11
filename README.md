@@ -67,6 +67,14 @@ Building per the [implementation plan](doc/implementation-plan.md), test-first:
 - [x] **M5** — Usage aggregation & billing (aggregation, invoices, CSV export, budget alerts, rate cards)
 - [x] **M6** — Vue admin UI (typed client, auth store, models/keys/usage/budgets views + stores)
 - [x] **M7** — Local DX polish (make seed, stub provider, make dev, smoke script, quickstart)
-- [ ] M8 — Deploy & hardening
+- [x] **M8** — Deploy & hardening (Dockerfiles, Compose SQLite/Postgres profiles, Helm chart + HPA, load test, [runbook](doc/runbook.md))
+
+## Deploy
+
+- **Compose (on-prem):** `cd deploy/docker-compose && docker compose up --build`
+  (add `--profile scale` for Postgres + Redis).
+- **Kubernetes:** `helm upgrade --install ai-gateway deploy/helm/ai-gateway ...`
+  (proxy autoscales via HPA).
+- Operations, upgrades, secrets, scaling, and incident response: [`doc/runbook.md`](doc/runbook.md).
 
 [uv]: https://docs.astral.sh/uv/

@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-governance-api
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.governanceApi.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: governance-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: governance-api
+        {{- include "ai-gateway.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: governance-api
+          image: {{ .Values.image.controlPlane }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.governanceApi.port }}
+          env:
+            - name: AIGW_DATABASE_URL
+              value: {{ .Values.database.url | quote }}
+            - name: AIGW_REDIS_URL
+              value: {{ .Values.redis.url | quote }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: {{ .Values.governanceApi.port }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.governanceApi.port }}
+          resources:
+            {{- toYaml .Values.governanceApi.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-governance-api
+spec:
+  selector:
+    app.kubernetes.io/component: governance-api
+  ports:
+    - port: {{ .Values.governanceApi.port }}
+      targetPort: {{ .Values.governanceApi.port }}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ai-gateway
+description: AI Gateway — enterprise LLM gateway on LiteLLM (control plane + proxy)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

@@ -1,0 +1,36 @@
+# Default values for the ai-gateway chart.
+
+image:
+  controlPlane: ghcr.io/yennanliu/ai-gateway-control-plane:0.1.0
+  dataPlane: ghcr.io/yennanliu/ai-gateway-proxy:0.1.0
+  pullPolicy: IfNotPresent
+
+# Datastore: swap in a managed Postgres URL for HA. Provided via a Secret in prod.
+database:
+  url: "postgresql+psycopg://aigw:aigw@ai-gateway-postgres:5432/aigw"
+
+redis:
+  url: "redis://ai-gateway-redis:6379/0"
+
+governanceApi:
+  replicas: 2
+  port: 8080
+  resources:
+    requests: { cpu: "100m", memory: "256Mi" }
+    limits: { cpu: "500m", memory: "512Mi" }
+
+proxy:
+  port: 4000
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  resources:
+    requests: { cpu: "250m", memory: "512Mi" }
+    limits: { cpu: "1", memory: "1Gi" }
+
+ingress:
+  enabled: true
+  className: nginx
+  host: ai-gateway.example.com

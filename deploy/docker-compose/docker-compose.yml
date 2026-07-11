@@ -1,0 +1,67 @@
+# AI Gateway on-prem topology.
+#   default profile: SQLite volume (zero external deps)
+#   `--profile scale`: adds Postgres + Redis (point AIGW_DATABASE_URL at Postgres)
+#
+# Usage:
+#   docker compose up --build
+#   docker compose --profile scale up --build   # with Postgres + Redis
+name: ai-gateway
+
+services:
+  governance-api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/control-plane.Dockerfile
+    environment:
+      AIGW_DATABASE_URL: ${AIGW_DATABASE_URL:-sqlite:////data/ai-gateway.db}
+      AIGW_REDIS_URL: ${AIGW_REDIS_URL:-}
+      AIGW_LITELLM_CONFIG_PATH: /data/litellm.config.yaml
+    volumes:
+      - aigw-data:/data
+    ports:
+      - "8080:8080"
+
+  litellm-proxy:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/data-plane.Dockerfile
+    environment:
+      AIGW_DATABASE_URL: ${AIGW_DATABASE_URL:-sqlite:////data/ai-gateway.db}
+      AIGW_LITELLM_CONFIG: /data/litellm.config.yaml
+    volumes:
+      - aigw-data:/data
+    depends_on:
+      - governance-api
+    ports:
+      - "4000:4000"
+
+  admin-ui:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/admin-ui.Dockerfile
+    depends_on:
+      - governance-api
+    ports:
+      - "8081:80"
+
+  postgres:
+    image: postgres:16
+    profiles: ["scale"]
+    environment:
+      POSTGRES_USER: aigw
+      POSTGRES_PASSWORD: aigw
+      POSTGRES_DB: aigw
+    volumes:
+      - aigw-pg:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["scale"]
+    ports:
+      - "6379:6379"
+
+volumes:
+  aigw-data:
+  aigw-pg:
