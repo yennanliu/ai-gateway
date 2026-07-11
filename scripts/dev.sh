@@ -27,6 +27,16 @@ echo "==> Starting governance-api on :8080"
 uv run uvicorn governance_api.main:app --reload --port 8080 &
 pids+=($!)
 
+# The LiteLLM proxy (data plane) is optional locally — start it only if the
+# proxy extra is installed. Run `make proxy` to install it and run standalone.
+if uv run --package aigw-hooks python -c "import litellm.proxy.proxy_server" >/dev/null 2>&1; then
+  echo "==> Starting LiteLLM proxy on :4000"
+  AIGW_LITELLM_CONFIG=./litellm.config.yaml uv run --package aigw-hooks bash data-plane/litellm/entrypoint.sh &
+  pids+=($!)
+else
+  echo "==> LiteLLM proxy extra not installed; skipping data plane (run 'make proxy' for it)"
+fi
+
 if [ -d admin-ui ]; then
   echo "==> Starting Vue UI on :5173"
   ( cd admin-ui && (pnpm dev || npm run dev) ) &

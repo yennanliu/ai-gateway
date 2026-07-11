@@ -55,25 +55,38 @@ curl -s localhost:8080/api/v1/usage "${H[@]}"
 
 Or just run `make seed` — it prints an org id and a ready-to-use virtual key.
 
-## 4. Testing the data plane (LiteLLM proxy end-to-end)
+## 4. Do I need to run the LiteLLM proxy locally?
 
-The proxy needs the `litellm[proxy]` extra. To exercise an actual
-`/v1/chat/completions` through the proxy with our custom-auth + a stub model:
+**Not for most work.** `make dev` runs the **control plane + UI + a stub provider**
+(migrations, seed, governance-api :8080, Vue :5173, stub :9099). The **LiteLLM
+proxy itself (the data plane) is not required** to develop or test the API, the
+UI, budgets, guardrails logic, billing, or to run unit/e2e tests — those don't
+route real inference.
+
+`make dev` starts the proxy **only if the `litellm[proxy]` extra is installed**
+(it probes for it and skips otherwise, so the default dev loop stays light).
+
+You **do** need the proxy running to exercise the real inference path
+(`/v1/chat/completions` → custom-auth → routing/fallback → metering). Easiest:
 
 ```bash
-uv sync --all-packages --extra proxy      # install litellm[proxy]
-make migrate && make seed                  # demo model points at the stub
-uv run python scripts/stub_provider.py &   # fake provider on :9099
-AIGW_LITELLM_CONFIG=./litellm.config.yaml bash data-plane/litellm/entrypoint.sh &
+make proxy    # installs litellm[proxy] and runs the proxy on :4000
+```
 
-# use the virtual key printed by `make seed`
+Then (with `make api` + `make seed` already run, and the stub provider up) use
+the virtual key printed by `make seed`:
+
+```bash
+uv run python scripts/stub_provider.py &   # fake provider on :9099 (if not already up)
 curl -s localhost:4000/v1/chat/completions \
   -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
   -d '{"model":"demo-gpt","messages":[{"role":"user","content":"hi"}]}'
 ```
 
 An unknown/expired/revoked key returns 401 (custom-auth); a successful call is
-metered into `usage_records`.
+metered into `usage_records`. Note: routing + fallback are also verified without
+a running proxy by the integration test (`uv run pytest tests/integration`),
+which drives a real `litellm.Router` against the stub.
 
 ## 5. Inspecting local state
 

@@ -36,6 +36,12 @@ governance-api (:8080), and the Vue UI (:5173), all hot-reloading:
 make dev
 ```
 
+`make dev` does **not** require the LiteLLM proxy (data plane) — the control
+plane, UI, and tests don't route real inference. It starts the proxy only if the
+`litellm[proxy]` extra is installed; run `make proxy` to install and run it on
+:4000 when you want to test actual `/v1/chat/completions` calls. See
+[testing & debugging](doc/testing-and-debugging.md#4-do-i-need-to-run-the-litellm-proxy-locally).
+
 Open http://localhost:5173 and sign in with the dev principal (user `admin`,
 the org id printed by `make seed`, roles `org-admin`).
 

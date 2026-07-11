@@ -1,20 +1,17 @@
 <script setup lang="ts">
-import { reactive } from "vue";
 import { RouterLink, RouterView } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useThemeStore } from "@/stores/theme";
+import LandingView from "@/views/LandingView.vue";
 
 const auth = useAuthStore();
-const form = reactive({ userId: "admin", orgId: "", roles: "org-admin" });
-
-function login(): void {
-  auth.login({ userId: form.userId, orgId: form.orgId, roles: form.roles.split(",") });
-}
+const theme = useThemeStore();
 </script>
 
 <template>
   <header class="topbar">
     <div class="container bar">
-      <span class="wordmark">AI&nbsp;GATEWAY</span>
+      <RouterLink to="/" class="wordmark">AI&nbsp;GATEWAY</RouterLink>
       <nav v-if="auth.isAuthenticated">
         <RouterLink to="/">Dashboard</RouterLink>
         <RouterLink to="/models">Models</RouterLink>
@@ -23,6 +20,14 @@ function login(): void {
         <RouterLink to="/budgets">Budgets</RouterLink>
       </nav>
       <span class="spacer" />
+      <button
+        class="theme-toggle"
+        :title="theme.mode === 'dark' ? 'Switch to light' : 'Switch to dark'"
+        :aria-label="theme.mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+        @click="theme.toggle"
+      >
+        {{ theme.mode === "dark" ? "☀" : "☾" }}
+      </button>
       <span v-if="auth.isAuthenticated" class="who">
         {{ auth.principal?.userId }} · {{ auth.principal?.orgId?.slice(0, 8) }}
         <button class="btn btn-secondary" @click="auth.logout">Sign out</button>
@@ -31,24 +36,7 @@ function login(): void {
   </header>
 
   <main>
-    <section v-if="!auth.isAuthenticated" class="film">
-      <div class="container film-inner">
-        <p class="eyebrow">Enterprise LLM gateway</p>
-        <h1 class="hero">One API. Every model.<br />Governed, metered, yours.</h1>
-        <div class="card signin">
-          <p class="muted">Dev sign-in (stand-in until OIDC)</p>
-          <div class="row">
-            <input v-model="form.userId" placeholder="user id" />
-            <input v-model="form.orgId" placeholder="org id" />
-            <input v-model="form.roles" placeholder="roles (comma)" />
-            <button class="btn btn-primary" :disabled="!form.orgId" @click="login">
-              Sign in
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
+    <LandingView v-if="!auth.isAuthenticated" />
     <div v-else class="container page">
       <RouterView />
     </div>
@@ -96,6 +84,22 @@ nav a.router-link-active {
 .spacer {
   flex: 1;
 }
+.theme-toggle {
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 250ms ease;
+}
+.theme-toggle:hover {
+  border-color: var(--text-dim);
+}
 .who {
   font-size: 13px;
   color: var(--text-muted);
@@ -105,42 +109,5 @@ nav a.router-link-active {
 }
 .page {
   padding: 40px 24px 80px;
-}
-
-/* Film hero — daylight cinematic gradient (no external assets) */
-.film {
-  background:
-    radial-gradient(120% 90% at 70% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
-    linear-gradient(180deg, var(--bg-alt), var(--bg));
-  min-height: calc(100vh - 60px);
-  display: flex;
-  align-items: center;
-}
-.film-inner {
-  padding: 64px 24px;
-}
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 12px;
-  color: var(--accent);
-  margin: 0 0 0.75rem;
-}
-.hero {
-  font-size: clamp(36px, 6vw, 64px);
-  font-weight: 300;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  margin: 0 0 2.5rem;
-}
-.signin {
-  max-width: 640px;
-}
-.signin .row {
-  margin-top: 0.75rem;
-}
-.signin input {
-  flex: 1;
-  min-width: 140px;
 }
 </style>

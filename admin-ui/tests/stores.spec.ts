@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { nextTick } from "vue";
 import { createPinia, setActivePinia } from "pinia";
 import { principalToHeaders } from "@/stores/auth";
 import { useRegistryStore } from "@/stores/registry";
 import { useKeysStore } from "@/stores/keys";
 import { useUsageStore } from "@/stores/usage";
+import { useThemeStore } from "@/stores/theme";
 
 function mockFetch(body: unknown, status = 200, contentType = "application/json") {
   return vi.fn().mockResolvedValue({
@@ -71,6 +73,17 @@ describe("keys store", () => {
     expect(issued.key).toBe("sk-ag-secret");
     expect(store.lastIssued?.key).toBe("sk-ag-secret");
     expect(store.items).toHaveLength(1);
+  });
+});
+
+describe("theme store", () => {
+  it("toggles mode and reflects it on <html>", async () => {
+    const store = useThemeStore();
+    const start = store.mode;
+    store.toggle();
+    expect(store.mode).not.toBe(start);
+    await nextTick();
+    expect(document.documentElement.dataset.theme).toBe(store.mode);
   });
 });
 

@@ -1,7 +1,7 @@
 ALEMBIC = uv run alembic -c control-plane/governance-api/alembic.ini
 UI_DIR = admin-ui
 
-.PHONY: help install dev api ui test test-py test-ui e2e smoke lint format migrate revision seed openapi clean
+.PHONY: help install dev api ui proxy test test-py test-ui e2e smoke lint format migrate revision seed openapi clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -18,6 +18,10 @@ api: ## Run only the governance API
 
 ui: ## Run only the Vue dev server
 	cd $(UI_DIR) && (pnpm dev || npm run dev)
+
+proxy: ## Run the LiteLLM data-plane proxy (installs the proxy extra; needs a compiled config)
+	uv sync --all-packages --extra proxy
+	AIGW_LITELLM_CONFIG=./litellm.config.yaml uv run --package aigw-hooks bash data-plane/litellm/entrypoint.sh
 
 test: test-py test-ui ## Run all tests
 

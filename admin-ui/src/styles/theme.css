@@ -33,8 +33,11 @@
   --mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
 }
 
+/* Dark tokens: applied automatically by OS preference (when no explicit choice)
+   or forced via the header toggle (data-theme="dark"). data-theme="light" keeps
+   the light :root above and wins over the media query. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #0b0d10;
     --bg-alt: #111418;
     --surface: #14181d;
@@ -47,6 +50,20 @@
     --shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
     --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b0d10;
+  --bg-alt: #111418;
+  --surface: #14181d;
+  --border: #232830;
+  --ink: #f4f6f8;
+  --text: #e7eaee;
+  --text-muted: #a3abb4;
+  --text-dim: #79828c;
+  --moss-soft: #10241c;
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 * {
