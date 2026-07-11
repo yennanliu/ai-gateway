@@ -90,7 +90,7 @@ Stand up the skeleton and the test harness first, so every later milestone is TD
 **DoD:** `make dev` serves API + Vue; `make test` green in CI; coverage reporting live.
 
 ### M1 — Data model & migrations  *(~4 days)*
-- SQLAlchemy models for all §6 entities (Org, Team, User, Membership, App, VirtualKey, ProviderCredential, ModelDeployment, Policy, Budget, UsageRecord, AuditEvent, RateCard).
+- SQLAlchemy models for all data-model entities (system-design §8): Org, Team, User, Membership, App, VirtualKey, ProviderCredential, ModelDeployment, Policy, Budget, UsageRecord, AuditEvent, RateCard.
 - Alembic migration; verify it applies on **both** SQLite and Postgres (CI matrix).
 - Repository layer + factory fixtures.
 - **Tests first:** model constraints, cascade deletes, JSON-column round-trips, `scope_type` resolution helper (most-specific-wins) with exhaustive cases.
