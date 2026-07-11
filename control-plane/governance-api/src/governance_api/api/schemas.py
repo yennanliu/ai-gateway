@@ -177,3 +177,55 @@ class BudgetOut(ORMModel):
     soft_pct: int
     hard_pct: int
     spent: Decimal
+
+
+# --- Provider credentials & model registry ---------------------------------
+
+
+class ProviderCredentialCreate(BaseModel):
+    provider: str = Field(min_length=1)
+    secret_ref: str = Field(min_length=1)
+
+
+class ProviderCredentialOut(ORMModel):
+    id: str
+    org_id: str
+    provider: str
+    secret_ref: str
+    status: str
+
+
+class ModelDeploymentCreate(BaseModel):
+    public_name: str = Field(min_length=1)
+    provider: str = Field(min_length=1)
+    model: str = Field(min_length=1)
+    api_base: str | None = None
+    credential_id: str | None = None
+    routing_tags: list[str] = Field(default_factory=list)
+    tpm_limit: int | None = Field(default=None, ge=0)
+    rpm_limit: int | None = Field(default=None, ge=0)
+
+
+class ModelDeploymentUpdate(BaseModel):
+    public_name: str | None = Field(default=None, min_length=1)
+    model: str | None = None
+    api_base: str | None = None
+    credential_id: str | None = None
+    routing_tags: list[str] | None = None
+    tpm_limit: int | None = Field(default=None, ge=0)
+    rpm_limit: int | None = Field(default=None, ge=0)
+    status: str | None = None
+
+
+class ModelDeploymentOut(ORMModel):
+    id: str
+    org_id: str
+    public_name: str
+    provider: str
+    model: str
+    api_base: str | None
+    credential_id: str | None
+    routing_tags: list[str]
+    tpm_limit: int | None
+    rpm_limit: int | None
+    status: str

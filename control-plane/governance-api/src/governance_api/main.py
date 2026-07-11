@@ -5,14 +5,24 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from governance_api import __version__
-from governance_api.api import apps, billing, config, keys, memberships, orgs, teams, users
+from governance_api.api import (
+    apps,
+    billing,
+    config,
+    keys,
+    memberships,
+    models,
+    orgs,
+    teams,
+    users,
+)
 from governance_api.config import COMPATIBLE_LITELLM
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="AI Gateway — Governance API", version=__version__)
 
-    for module in (orgs, teams, users, memberships, apps, keys, config, billing):
+    for module in (orgs, teams, users, memberships, apps, keys, models, config, billing):
         app.include_router(module.router)
 
     @app.get("/healthz", tags=["system"])
