@@ -140,7 +140,7 @@ Implemented as LiteLLM custom-auth + custom callbacks / `CustomLogger` and pre/p
 - Serves dashboard queries and budget-alert evaluation. (May run in-process with the Governance API for small deployments; separable at scale.)
 
 ### 3.6 Admin UI / self-serve portal
-- Branded web app (**Vue 3 + Vite + TypeScript + Pinia**). Admin console (governance, model config, billing, audit) + self-serve developer portal (create keys, view usage, playground). Talks only to the Governance/Billing API via a typed client generated from the OpenAPI schema.
+- **All UI is Vue.** A single **Vue 3 + Vite + TypeScript + Pinia** SPA serves both the admin console (governance, model config, billing, audit) and the self-serve developer portal (create keys, view usage, playground) — no other frontend framework is used anywhere in the product. Talks only to the Governance/Billing API via a typed client generated from the OpenAPI schema.
 
 ### 3.7 Shared stores
 - **Relational DB (SQLAlchemy)** — our full schema (orgs, teams, users, keys, spend, policies, audit, rating). **SQLite** file by default; **Postgres** at scale. Same models/migrations for both.
@@ -572,11 +572,10 @@ ai-gateway/
 ├── .env.example                        # local dev config (SQLite path, stub provider, etc.)
 │
 ├── doc/
-│   └── ai-gateway/
-│       ├── litellm-evaluation.md
-│       ├── system-design.md            # this document
-│       ├── implementation-plan.md      # TDD build plan
-│       └── deployment-and-gtm.md       # SaaS vs self-hosted, editions, pricing
+│   ├── litellm-evaluation.md
+│   ├── system-design.md                # this document
+│   ├── implementation-plan.md          # TDD build plan
+│   └── deployment-and-gtm.md           # SaaS vs self-hosted, editions, pricing
 │
 ├── deploy/
 │   ├── docker-compose/                 # on-prem topology (sqlite volume or +postgres/redis)
