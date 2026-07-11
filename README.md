@@ -18,26 +18,42 @@ and [`doc/deployment-and-gtm.md`](doc/deployment-and-gtm.md).
 
 ## Quickstart
 
-Prerequisites: [uv], Node 20+.
+Prerequisites: [uv], Node 20+. No external services needed — SQLite file,
+in-process cache, and a bundled stub provider mean no real API keys are required.
 
 ```bash
 uv sync --all-packages          # install Python deps
 make migrate                    # create local SQLite schema
+make seed                       # demo org/team/model/key (prints a virtual key)
 cd admin-ui && npm install      # install UI deps
 ```
 
-Run the dev stack (governance-api on :8080, Vue on :5173):
+Run the dev stack — migrates, seeds, then starts the stub provider (:9099),
+governance-api (:8080), and the Vue UI (:5173), all hot-reloading:
 
 ```bash
 make dev
 ```
 
+Open http://localhost:5173 and sign in with the dev principal (user `admin`,
+the org id printed by `make seed`, roles `org-admin`).
+
 Test / lint:
 
 ```bash
-make test        # pytest (+ coverage) and vitest
-make lint        # ruff + mypy
+make test            # pytest (+ coverage) and vitest
+make lint            # ruff + mypy
+./scripts/smoke.sh   # end-to-end: migrate -> seed -> API -> authenticated request
 ```
+
+### Troubleshooting
+
+- **401 from the API** — control-plane calls need dev auth headers
+  (`X-User-Id`, `X-Org-Id`, `X-Org-Roles`); the UI sends them after dev sign-in.
+- **`pnpm: command not found`** — the Makefile falls back to `npm`, or run
+  `corepack enable`.
+- **Reset local state** — `make clean` removes the SQLite DB and caches; then
+  `make migrate && make seed`.
 
 ## Status
 
@@ -50,7 +66,7 @@ Building per the [implementation plan](doc/implementation-plan.md), test-first:
 - [x] **M4** — Metering, budgets, rate limits & guardrails
 - [x] **M5** — Usage aggregation & billing (aggregation, invoices, CSV export, budget alerts, rate cards)
 - [x] **M6** — Vue admin UI (typed client, auth store, models/keys/usage/budgets views + stores)
-- [ ] M7 — Local DX polish
+- [x] **M7** — Local DX polish (make seed, stub provider, make dev, smoke script, quickstart)
 - [ ] M8 — Deploy & hardening
 
 [uv]: https://docs.astral.sh/uv/

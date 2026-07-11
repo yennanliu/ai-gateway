@@ -16,6 +16,13 @@ trap cleanup EXIT INT TERM
 echo "==> Applying migrations"
 uv run alembic -c control-plane/governance-api/alembic.ini upgrade head
 
+echo "==> Seeding demo data (idempotent)"
+uv run python scripts/seed.py || true
+
+echo "==> Starting stub provider on :9099"
+uv run python scripts/stub_provider.py &
+pids+=($!)
+
 echo "==> Starting governance-api on :8080"
 uv run uvicorn governance_api.main:app --reload --port 8080 &
 pids+=($!)
