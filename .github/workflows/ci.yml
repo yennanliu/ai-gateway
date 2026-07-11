@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (lint · type · test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-packages
+      - name: Ruff (lint)
+        run: uv run ruff check .
+      - name: Ruff (format check)
+        run: uv run ruff format --check .
+      - name: Mypy
+        run: uv run mypy
+      - name: Pytest (SQLite) + coverage
+        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=80
+
+  migrations-postgres:
+    name: Migrations on Postgres + drift check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aigw
+          POSTGRES_PASSWORD: aigw
+          POSTGRES_DB: aigw
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      AIGW_DATABASE_URL: postgresql+psycopg://aigw:aigw@localhost:5432/aigw
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-packages --extra postgres
+      - name: Apply migrations (Postgres)
+        run: uv run alembic -c control-plane/governance-api/alembic.ini upgrade head
+      - name: Model/migration drift guard
+        run: uv run alembic -c control-plane/governance-api/alembic.ini check
+
+  ui:
+    name: UI (lint · test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin-ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - run: npm run lint --if-present
+      - run: npm run test:unit --if-present
+      - run: npm run build --if-present

@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Env / local db
+.env
+*.db
+*.sqlite3
+
+# Node / Vue
+node_modules/
+admin-ui/dist/
+*.local
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
