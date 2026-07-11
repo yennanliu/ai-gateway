@@ -5,13 +5,14 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from governance_api import __version__
-from governance_api.api import apps, keys, memberships, orgs, teams, users
+from governance_api.api import apps, config, keys, memberships, orgs, teams, users
+from governance_api.config import COMPATIBLE_LITELLM
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="AI Gateway — Governance API", version=__version__)
 
-    for module in (orgs, teams, users, memberships, apps, keys):
+    for module in (orgs, teams, users, memberships, apps, keys, config):
         app.include_router(module.router)
 
     @app.get("/healthz", tags=["system"])
@@ -26,8 +27,8 @@ def create_app() -> FastAPI:
 
     @app.get("/api/v1/version", tags=["system"])
     def version() -> dict[str, str]:
-        """AI Gateway version (LiteLLM compatibility matrix added in M3)."""
-        return {"version": __version__, "litellm": "unpinned-dev"}
+        """AI Gateway version + the LiteLLM version this build is tested against."""
+        return {"version": __version__, "litellm": COMPATIBLE_LITELLM}
 
     return app
 

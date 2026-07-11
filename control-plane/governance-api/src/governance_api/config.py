@@ -21,7 +21,14 @@ class Settings(BaseSettings):
     # Secrets provider: "env" (local dev) or "vault" (production).
     secrets_provider: str = "env"
 
+    # Where the compiled LiteLLM config is written for the proxy to load.
+    litellm_config_path: str = "./litellm.config.yaml"
+
     environment: str = "local"
+
+
+# The LiteLLM version this build is tested against (see system-design §11).
+COMPATIBLE_LITELLM = "1.91.1"
 
 
 settings = Settings()

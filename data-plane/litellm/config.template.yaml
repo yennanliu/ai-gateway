@@ -1,0 +1,16 @@
+# Base LiteLLM proxy config (first-boot bootstrap, system-design §10.2).
+#
+# The control plane OVERWRITES this file via the config compiler
+# (POST /api/v1/config/compile) with the real model_list + router_settings.
+# On an empty registry the proxy still starts healthy with zero models.
+
+model_list: []
+
+router_settings:
+  routing_strategy: simple-shuffle
+  num_retries: 2
+
+general_settings:
+  # Our custom-auth validates virtual keys against the control-plane store.
+  # No LiteLLM key store is used (system-design §4).
+  custom_auth: hooks.auth.user_api_key_auth

@@ -194,6 +194,7 @@ class ModelDeployment(Base):
     public_name: Mapped[str] = mapped_column(String(255))
     provider: Mapped[str] = mapped_column(String(64))
     model: Mapped[str] = mapped_column(String(255))
+    api_base: Mapped[str | None] = mapped_column(String(512), default=None)
     credential_id: Mapped[str | None] = mapped_column(
         ForeignKey("provider_credentials.id", ondelete="SET NULL"), default=None
     )

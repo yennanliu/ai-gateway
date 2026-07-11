@@ -14,6 +14,9 @@ htmlcov/
 *.db
 *.sqlite3
 
+# Compiled LiteLLM config (derived artifact)
+litellm.config.yaml
+
 # Node / Vue
 node_modules/
 admin-ui/dist/

@@ -13,7 +13,7 @@ and [`doc/deployment-and-gtm.md`](doc/deployment-and-gtm.md).
 - **Backend:** Python + FastAPI, managed with [uv]; SQLAlchemy + Alembic.
 - **Datastore:** SQLite by default (zero-ops local/on-prem); Postgres by connection-string swap.
 - **Frontend:** Vue 3 + Vite + TypeScript + Pinia (all UI).
-- **Data plane:** LiteLLM Proxy (added in M3), extended via our custom-auth + callback hooks.
+- **Data plane:** LiteLLM Proxy (pinned; see `/api/v1/version`), extended via our custom-auth + callback hooks.
 - **Testing:** pytest (backend) + vitest (UI); TDD; local-first — no external services required.
 
 ## Quickstart
@@ -46,8 +46,8 @@ Building per the [implementation plan](doc/implementation-plan.md), test-first:
 - [x] **M0** — Bootstrap & CI (workspace, FastAPI `/healthz`, test harness, Vue scaffold, CI)
 - [x] **M1** — Data model & migrations (13 entities, cascades, scope resolution, Alembic)
 - [x] **M2** — Governance API & RBAC (org/team/user/membership/app CRUD, virtual-key lifecycle, RBAC, audit)
-- [ ] **M3** — LiteLLM integration & config compiler
-- [ ] M4 — Metering, budgets & guardrails
+- [x] **M3** — LiteLLM integration & config compiler (custom-auth, compile→write→reload, real-LiteLLM routing/fallback test)
+- [ ] **M4** — Metering, budgets & guardrails
 - [ ] M5 — Usage aggregation & billing
 - [ ] M6 — Vue admin UI
 - [ ] M7 — Local DX polish

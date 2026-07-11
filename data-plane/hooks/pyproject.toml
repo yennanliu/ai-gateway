@@ -1,0 +1,24 @@
+[project]
+name = "aigw-hooks"
+version = "0.1.0"
+description = "AI Gateway LiteLLM extension: custom-auth + callbacks"
+requires-python = ">=3.12"
+dependencies = [
+    # Pinned range; uv.lock pins the exact version tested by tests/contract.
+    "litellm>=1.55,<2",
+    "governance-api",
+]
+
+[project.optional-dependencies]
+# Optional so the control-plane test job needn't install the heavy LiteLLM stack.
+proxy = ["litellm[proxy]>=1.55,<2"]
+
+[tool.uv.sources]
+governance-api = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hooks"]

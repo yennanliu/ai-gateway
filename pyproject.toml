@@ -9,7 +9,7 @@ dependencies = []
 package = false
 
 [tool.uv.workspace]
-members = ["control-plane/governance-api"]
+members = ["control-plane/governance-api", "data-plane/hooks"]
 
 [dependency-groups]
 dev = [
@@ -19,6 +19,7 @@ dev = [
     "httpx>=0.27",
     "ruff>=0.6",
     "mypy>=1.11",
+    "types-PyYAML>=6.0",
 ]
 
 [tool.ruff]
@@ -32,11 +33,15 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["control-plane/governance-api/tests"]
+testpaths = [
+    "control-plane/governance-api/tests",
+    "data-plane/hooks/tests",
+    "tests/integration",
+]
 addopts = "-q"
 
 [tool.coverage.run]
-source = ["governance_api"]
+source = ["governance_api", "hooks"]
 branch = true
 
 [tool.mypy]
