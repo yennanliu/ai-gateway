@@ -138,3 +138,42 @@ class KeyIssued(KeyOut):
     """Returned once on issue/rotate; includes the plaintext secret."""
 
     key: str
+
+
+# --- Rate cards & budgets --------------------------------------------------
+
+
+class RateCardUpsert(BaseModel):
+    model: str
+    unit: str = "1k_tokens"
+    price: Decimal
+    markup_pct: Decimal = Decimal("0")
+
+
+class RateCardOut(ORMModel):
+    id: str
+    org_id: str
+    model: str
+    unit: str
+    price: Decimal
+    markup_pct: Decimal
+
+
+class BudgetUpsert(BaseModel):
+    scope_type: Literal["org", "team", "user", "app", "key"]
+    scope_id: str
+    period: Literal["daily", "monthly"] = "monthly"
+    limit: Decimal
+    soft_pct: int = Field(default=80, ge=0, le=100)
+    hard_pct: int = Field(default=100, ge=0, le=100)
+
+
+class BudgetOut(ORMModel):
+    id: str
+    scope_type: str
+    scope_id: str
+    period: str
+    limit: Decimal
+    soft_pct: int
+    hard_pct: int
+    spent: Decimal
