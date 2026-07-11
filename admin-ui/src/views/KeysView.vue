@@ -1,32 +1,66 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
 import { useKeysStore } from "@/stores/keys";
+import { useTeamsStore } from "@/stores/teams";
 
+const auth = useAuthStore();
 const store = useKeysStore();
+const teamsStore = useTeamsStore();
 const teamId = ref("");
+const error = ref<string | null>(null);
 
-async function load(): Promise<void> {
-  if (teamId.value) await store.refresh(teamId.value);
+onMounted(async () => {
+  await teamsStore.refresh(auth.principal?.orgId ?? "");
+  if (teamsStore.items.length) teamId.value = teamsStore.items[0].id;
+});
+
+watch(teamId, (id) => {
+  if (id) void load();
+});
+
+async function run(fn: () => Promise<unknown>): Promise<void> {
+  error.value = null;
+  try {
+    await fn();
+  } catch (e) {
+    error.value = (e as Error).message;
+  }
 }
 
-async function issue(): Promise<void> {
-  if (teamId.value) await store.issue(teamId.value);
-}
+const load = () => run(() => store.refresh(teamId.value));
+const issue = () => run(() => store.issue(teamId.value));
+const revoke = (id: string) => run(() => store.revoke(id, teamId.value));
 </script>
 
 <template>
   <section>
     <h1>Virtual keys</h1>
-    <div class="card">
+
+    <div v-if="!teamsStore.items.length" class="card">
+      <p class="muted">
+        No teams yet. Create one on the <RouterLink to="/teams">Teams</RouterLink> page,
+        then issue keys here.
+      </p>
+    </div>
+
+    <div v-else class="card">
       <div class="row">
-        <input v-model="teamId" placeholder="team id" />
-        <button class="btn btn-secondary" @click="load">Load</button>
+        <label class="muted">Team</label>
+        <select v-model="teamId">
+          <option v-for="t in teamsStore.items" :key="t.id" :value="t.id">
+            {{ t.name }}
+          </option>
+        </select>
         <button class="btn btn-primary" :disabled="!teamId" @click="issue">Issue key</button>
       </div>
       <p v-if="store.lastIssued" class="issued">
         New key (shown once): <code>{{ store.lastIssued.key }}</code>
       </p>
     </div>
+
+    <p v-if="error" class="pill pill-alert" style="margin-top: 12px">{{ error }}</p>
 
     <div v-if="store.items.length" class="card" style="margin-top: 16px">
       <table class="data">
@@ -43,7 +77,7 @@ async function issue(): Promise<void> {
               <button
                 class="btn btn-secondary"
                 :disabled="k.status !== 'active'"
-                @click="store.revoke(k.id, teamId)"
+                @click="revoke(k.id)"
               >
                 Revoke
               </button>
@@ -52,7 +86,9 @@ async function issue(): Promise<void> {
         </tbody>
       </table>
     </div>
-    <p v-else class="muted" style="margin-top: 16px">No keys loaded.</p>
+    <p v-else-if="teamsStore.items.length" class="muted" style="margin-top: 16px">
+      No keys for this team yet.
+    </p>
   </section>
 </template>
 

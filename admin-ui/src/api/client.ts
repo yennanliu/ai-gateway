@@ -3,6 +3,7 @@ import type {
   BudgetAlert,
   KeyIssued,
   ModelDeployment,
+  Team,
   UsageRow,
   VirtualKey,
 } from "@/api/types";
@@ -42,6 +43,12 @@ export async function api<T>(method: string, path: string, body?: unknown): Prom
 }
 
 // --- Resource helpers ------------------------------------------------------
+
+export const teams = {
+  list: (orgId: string) => api<Team[]>("GET", `/api/v1/teams?org_id=${orgId}`),
+  create: (orgId: string, name: string) =>
+    api<Team>("POST", "/api/v1/teams", { org_id: orgId, name }),
+};
 
 export const models = {
   list: () => api<ModelDeployment[]>("GET", "/api/v1/models"),

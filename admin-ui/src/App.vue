@@ -15,6 +15,7 @@ const theme = useThemeStore();
       <nav v-if="auth.isAuthenticated">
         <RouterLink to="/">Dashboard</RouterLink>
         <RouterLink to="/models">Models</RouterLink>
+        <RouterLink to="/teams">Teams</RouterLink>
         <RouterLink to="/keys">Keys</RouterLink>
         <RouterLink to="/usage">Usage</RouterLink>
         <RouterLink to="/budgets">Budgets</RouterLink>

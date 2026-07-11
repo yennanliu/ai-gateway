@@ -1,3 +1,11 @@
+export interface Team {
+  id: string;
+  org_id: string;
+  name: string;
+  default_budget: string | null;
+  created_at: string;
+}
+
 export interface ModelDeployment {
   id: string;
   org_id: string;
