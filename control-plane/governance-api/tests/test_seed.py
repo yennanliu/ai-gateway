@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from governance_api.auth.principal import Principal
 from governance_api.security.keys import verify_key
 from governance_api.services.config_compiler import compile_for_org
-from governance_api.services.metering import record_usage
 from governance_api.services.seed import seed
 
 Setter = Callable[[Principal], None]
@@ -48,16 +47,6 @@ async def test_seed_data_is_usable_via_api(
     client: AsyncClient, as_principal: Setter, db: Session
 ) -> None:
     result = seed(db)
-    # record a call so usage is non-empty
-    record_usage(
-        db,
-        key_id=result["key_id"],
-        team_id=result["team_id"],
-        org_id=result["org_id"],
-        model="gpt-4o-mini",
-        prompt_tokens=1000,
-        completion_tokens=0,
-    )
     db.commit()
 
     as_principal(org_admin(result["org_id"]))
@@ -65,6 +54,13 @@ async def test_seed_data_is_usable_via_api(
     assert models.status_code == 200
     assert any(m["public_name"] == "demo-gpt" for m in models.json())
 
+    # seed created a spread of usage records
     usage = await client.get("/api/v1/usage")
     assert usage.status_code == 200
-    assert usage.json()[0]["requests"] == 1
+    assert len(usage.json()) >= 1
+    assert sum(row["requests"] for row in usage.json()) >= 1
+
+    # budgets over threshold surface as alerts
+    alerts = await client.get("/api/v1/budgets/alerts")
+    assert alerts.status_code == 200
+    assert len(alerts.json()) >= 1

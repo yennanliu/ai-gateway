@@ -22,11 +22,15 @@ def main() -> None:
         write_config(config, settings.litellm_config_path)
         session.commit()
 
+    counts = result["counts"]
     print("Seeded demo data:")
-    print(f"  org:   {result['org_id']}")
-    print(f"  team:  {result['team_id']}")
-    print(f"  model: {result['model']}  (via stub {stub_url})")
-    print(f"  key:   {result['key']}   <-- shown once")
+    print(f"  org:    {result['org_id']}  (sign in with this org id, role org-admin)")
+    print(f"  team:   {result['team_id']}  (Platform; +{counts['teams'] - 1} more)")
+    print(
+        f"  models: {counts['models']}  (demo-gpt / demo-gpt-4o / demo-claude, via stub {stub_url})"
+    )
+    print(f"  usage:  {counts['usage_rows_added']} record(s) seeded (dashboard + usage views)")
+    print(f"  key:    {result['key']}   <-- shown once")
     print(f"  litellm config -> {settings.litellm_config_path}")
     print()
     print("Try it once the proxy is running:")
