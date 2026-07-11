@@ -18,9 +18,41 @@ from governance_api.api import (
 )
 from governance_api.config import COMPATIBLE_LITELLM
 
+API_DESCRIPTION = """
+Control-plane API for **AI Gateway** — governance, virtual keys, model registry,
+budgets, usage/billing, and LiteLLM config compilation.
+
+**Auth (dev):** send `X-User-Id`, `X-Org-Id`, and `X-Org-Roles` headers
+(e.g. `org-admin`). OIDC/SAML replaces this in a later milestone.
+
+Interactive docs: **Swagger UI** at `/docs`, **ReDoc** at `/redoc`,
+raw schema at `/openapi.json`.
+"""
+
+OPENAPI_TAGS = [
+    {"name": "system", "description": "Health, readiness, and version."},
+    {"name": "orgs", "description": "Organizations."},
+    {"name": "teams", "description": "Teams within an org."},
+    {"name": "users", "description": "Users and memberships (RBAC)."},
+    {"name": "memberships", "description": "Team role assignments."},
+    {"name": "apps", "description": "Agent / service consumers."},
+    {"name": "keys", "description": "Virtual key lifecycle (issue/rotate/revoke)."},
+    {"name": "registry", "description": "Provider credentials + model deployments."},
+    {"name": "config", "description": "Compile & reload the LiteLLM proxy config."},
+    {"name": "billing", "description": "Usage aggregation, invoices, budgets, rate cards."},
+]
+
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="AI Gateway — Governance API", version=__version__)
+    app = FastAPI(
+        title="AI Gateway — Governance API",
+        version=__version__,
+        description=API_DESCRIPTION,
+        openapi_tags=OPENAPI_TAGS,
+        docs_url="/docs",
+        redoc_url="/redoc",
+        contact={"name": "AI Gateway", "url": "https://github.com/yennanliu/ai-gateway"},
+    )
 
     for module in (orgs, teams, users, memberships, apps, keys, models, config, billing):
         app.include_router(module.router)

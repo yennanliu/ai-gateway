@@ -51,6 +51,18 @@ jobs:
       - name: Model/migration drift guard
         run: uv run alembic -c control-plane/governance-api/alembic.ini check
 
+  e2e:
+    name: E2E (real server over HTTP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-packages
+      - name: End-to-end tests
+        run: uv run pytest tests/e2e -v
+
   ui:
     name: UI (lint · test)
     runs-on: ubuntu-latest

@@ -1,0 +1,236 @@
+/* AI Gateway — cinematic design system (Waymo register: calm, premium, daylight).
+   Light-first; a restrained dark scheme follows the viewer's OS preference. */
+
+:root {
+  --bg: #ffffff;
+  --bg-alt: #f5f6f8;
+  --surface: #ffffff;
+  --border: #e6e8ec;
+
+  --ink: #0a0a0a;
+  --text: #1a1c1f;
+  --text-muted: #5b6167;
+  --text-dim: #8a9098;
+  --on-film: #ffffff;
+
+  --accent: #2f6bff;
+  --accent-hover: #1c53e0;
+  --accent-deep: #163fb0;
+  --moss: #34c98a;
+  --moss-soft: #e6f7ef;
+
+  --status-go: #34c98a;
+  --status-wait: #f0a020;
+  --status-alert: #e0402e;
+
+  --radius-card: 16px;
+  --radius-input: 12px;
+  --shadow: 0 2px 12px rgba(10, 10, 10, 0.06);
+  --shadow-hover: 0 8px 24px rgba(10, 10, 10, 0.1);
+
+  --font: "Inter", "Neue Haas Grotesk", "Founders Grotesk", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0d10;
+    --bg-alt: #111418;
+    --surface: #14181d;
+    --border: #232830;
+    --ink: #f4f6f8;
+    --text: #e7eaee;
+    --text-muted: #a3abb4;
+    --text-dim: #79828c;
+    --moss-soft: #10241c;
+    --shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+    --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.5rem;
+}
+h1 {
+  font-size: 28px;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+/* Buttons — accent pill primary; bordered secondary */
+.btn {
+  font: inherit;
+  font-weight: 500;
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 250ms ease, border-color 250ms ease, color 250ms ease;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--border);
+}
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--text-dim);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Inputs */
+.input,
+input,
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  padding: 0.5rem 0.75rem;
+}
+input:focus,
+select:focus,
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  padding: 1.25rem 1.5rem;
+  transition: box-shadow 250ms ease;
+}
+
+/* Stat tiles */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.stat .label {
+  color: var(--text-dim);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.stat .value {
+  color: var(--ink);
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+/* Tables */
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+}
+table.data th,
+table.data td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+table.data th {
+  color: var(--text-dim);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+/* Status pills */
+.pill {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.pill-go {
+  background: var(--moss-soft);
+  color: var(--status-go);
+}
+.pill-wait {
+  background: color-mix(in srgb, var(--status-wait) 15%, transparent);
+  color: var(--status-wait);
+}
+.pill-alert {
+  background: color-mix(in srgb, var(--status-alert) 12%, transparent);
+  color: var(--status-alert);
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

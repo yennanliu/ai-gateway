@@ -1,7 +1,7 @@
 ALEMBIC = uv run alembic -c control-plane/governance-api/alembic.ini
 UI_DIR = admin-ui
 
-.PHONY: help install dev api ui test test-py test-ui lint format migrate revision seed clean
+.PHONY: help install dev api ui test test-py test-ui e2e smoke lint format migrate revision seed openapi clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -27,6 +27,12 @@ test-py: ## Run Python tests with coverage
 test-ui: ## Run UI tests (if present)
 	@if [ -d "$(UI_DIR)" ]; then cd $(UI_DIR) && (pnpm test:unit || npm run test:unit); else echo "no UI yet"; fi
 
+e2e: ## Run end-to-end tests (boots the real server over HTTP)
+	uv run pytest tests/e2e -v
+
+smoke: ## Run the shell smoke script (migrate -> seed -> API -> request)
+	./scripts/smoke.sh
+
 lint: ## Lint + type-check
 	uv run ruff check .
 	uv run mypy
@@ -43,6 +49,9 @@ revision: ## Autogenerate a migration: make revision m="message"
 
 seed: ## Seed demo data
 	uv run python scripts/seed.py
+
+openapi: ## Export the OpenAPI schema to openapi.json
+	uv run python scripts/export_openapi.py
 
 clean: ## Remove local SQLite db and caches
 	rm -f ai-gateway.db

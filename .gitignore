@@ -14,8 +14,9 @@ htmlcov/
 *.db
 *.sqlite3
 
-# Compiled LiteLLM config (derived artifact)
+# Derived artifacts
 litellm.config.yaml
+openapi.json
 
 # Node / Vue
 node_modules/

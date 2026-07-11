@@ -23,17 +23,23 @@ onMounted(async () => {
 <template>
   <section>
     <h1>Dashboard</h1>
-    <p>Governance API: <HealthBadge :status="health.status" /></p>
-    <div class="tiles">
-      <div class="tile"><span>Total cost</span><strong>${{ usage.totalCost.toFixed(2) }}</strong></div>
-      <div class="tile"><span>Requests</span><strong>{{ usage.totalRequests }}</strong></div>
-      <div class="tile"><span>Budget alerts</span><strong>{{ alertCount }}</strong></div>
+    <p class="muted">
+      Governance API <HealthBadge :status="health.status" />
+    </p>
+
+    <div class="stat-grid">
+      <div class="stat">
+        <span class="label">Total cost</span>
+        <span class="value">${{ usage.totalCost.toFixed(2) }}</span>
+      </div>
+      <div class="stat">
+        <span class="label">Requests</span>
+        <span class="value">{{ usage.totalRequests }}</span>
+      </div>
+      <div class="stat">
+        <span class="label">Budget alerts</span>
+        <span class="value">{{ alertCount }}</span>
+      </div>
     </div>
   </section>
 </template>
-
-<style scoped>
-.tiles { display: flex; gap: 1rem; margin-top: 1rem; }
-.tile { border: 1px solid #e5e7eb; border-radius: 6px; padding: 0.75rem 1rem; display: flex; flex-direction: column; }
-.tile span { color: #6b7280; font-size: 0.8rem; }
-</style>

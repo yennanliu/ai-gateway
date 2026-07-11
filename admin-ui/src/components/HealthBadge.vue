@@ -13,18 +13,21 @@ const display = computed(() => healthDisplay(props.status));
 <style scoped>
 .badge {
   display: inline-block;
-  padding: 0.1rem 0.5rem;
+  padding: 0.1rem 0.6rem;
   border-radius: 999px;
-  font-size: 0.8rem;
-  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
 }
 .healthy {
-  background: #16a34a;
+  background: var(--moss-soft);
+  color: var(--status-go);
 }
 .degraded {
-  background: #d97706;
+  background: color-mix(in srgb, var(--status-wait) 15%, transparent);
+  color: var(--status-wait);
 }
 .down {
-  background: #dc2626;
+  background: color-mix(in srgb, var(--status-alert) 12%, transparent);
+  color: var(--status-alert);
 }
 </style>

@@ -17,38 +17,51 @@ async function issue(): Promise<void> {
 <template>
   <section>
     <h1>Virtual keys</h1>
-    <div class="row">
-      <input v-model="teamId" placeholder="team id" />
-      <button @click="load">Load</button>
-      <button :disabled="!teamId" @click="issue">Issue key</button>
+    <div class="card">
+      <div class="row">
+        <input v-model="teamId" placeholder="team id" />
+        <button class="btn btn-secondary" @click="load">Load</button>
+        <button class="btn btn-primary" :disabled="!teamId" @click="issue">Issue key</button>
+      </div>
+      <p v-if="store.lastIssued" class="issued">
+        New key (shown once): <code>{{ store.lastIssued.key }}</code>
+      </p>
     </div>
 
-    <p v-if="store.lastIssued" class="issued">
-      New key (shown once): <code>{{ store.lastIssued.key }}</code>
-    </p>
-
-    <table v-if="store.items.length">
-      <thead><tr><th>Prefix</th><th>Status</th><th></th></tr></thead>
-      <tbody>
-        <tr v-for="k in store.items" :key="k.id">
-          <td><code>{{ k.prefix }}</code></td>
-          <td>{{ k.status }}</td>
-          <td>
-            <button :disabled="k.status !== 'active'" @click="store.revoke(k.id, teamId)">
-              Revoke
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <p v-else class="muted">No keys loaded.</p>
+    <div v-if="store.items.length" class="card" style="margin-top: 16px">
+      <table class="data">
+        <thead><tr><th>Prefix</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="k in store.items" :key="k.id">
+            <td><code>{{ k.prefix }}</code></td>
+            <td>
+              <span class="pill" :class="k.status === 'active' ? 'pill-go' : 'pill-alert'">
+                {{ k.status }}
+              </span>
+            </td>
+            <td>
+              <button
+                class="btn btn-secondary"
+                :disabled="k.status !== 'active'"
+                @click="store.revoke(k.id, teamId)"
+              >
+                Revoke
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p v-else class="muted" style="margin-top: 16px">No keys loaded.</p>
   </section>
 </template>
 
 <style scoped>
-.row { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-.issued { background: #f0fdf4; padding: 0.5rem; border-radius: 4px; }
-.muted { color: #6b7280; }
-table { border-collapse: collapse; width: 100%; }
-th, td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid #e5e7eb; }
+.issued {
+  margin-top: 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-input);
+  background: var(--moss-soft);
+  color: var(--status-go);
+}
 </style>

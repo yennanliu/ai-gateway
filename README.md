@@ -5,8 +5,9 @@ one OpenAI-compatible API in front of many providers, with governance, virtual k
 budgets, usage/cost tracking, guardrails, and audit — self-hostable for the on-prem /
 private-cloud / compliance story.
 
-See [`doc/system-design.md`](doc/system-design.md), [`doc/implementation-plan.md`](doc/implementation-plan.md),
-and [`doc/deployment-and-gtm.md`](doc/deployment-and-gtm.md).
+Docs: [system design](doc/system-design.md) · [implementation plan](doc/implementation-plan.md) ·
+[deployment & GTM](doc/deployment-and-gtm.md) · [testing & debugging](doc/testing-and-debugging.md) ·
+[runbook](doc/runbook.md).
 
 ## Stack
 
@@ -64,10 +65,16 @@ Notes:
 Test / lint:
 
 ```bash
-make test            # pytest (+ coverage) and vitest
+make test            # unit: pytest (+ coverage) and vitest
+make e2e             # end-to-end: boots the real server, drives the API over HTTP
 make lint            # ruff + mypy
-./scripts/smoke.sh   # end-to-end: migrate -> seed -> API -> authenticated request
+make smoke           # shell smoke: migrate -> seed -> API -> authenticated request
 ```
+
+**API docs (Swagger):** with the backend running, open http://localhost:8080/docs
+(Swagger UI), `/redoc`, or `/openapi.json`. `make openapi` exports the schema.
+See [testing & debugging](doc/testing-and-debugging.md) for manual curl flows,
+data-plane testing, and troubleshooting.
 
 ### Troubleshooting
 
