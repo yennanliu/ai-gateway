@@ -8,17 +8,25 @@ threadpool keeps the code straightforward and portable across SQLite/Postgres.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import Any
 
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from governance_api.config import settings
 
 
 def make_engine(url: str) -> Engine:
-    connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
-    engine = create_engine(url, connect_args=connect_args, future=True)
-    if url.startswith("sqlite"):
+    is_sqlite = url.startswith("sqlite")
+    connect_args = {"check_same_thread": False} if is_sqlite else {}
+    kwargs: dict[str, Any] = {}
+    if url in ("sqlite://", "sqlite:///:memory:"):
+        # A single shared connection so an in-memory DB is visible across threads
+        # (sync endpoints run in FastAPI's threadpool).
+        kwargs["poolclass"] = StaticPool
+    engine = create_engine(url, connect_args=connect_args, future=True, **kwargs)
+    if is_sqlite:
         # SQLite disables FK enforcement by default; turn it on so ON DELETE
         # CASCADE and FK constraints behave like Postgres.
         @event.listens_for(engine, "connect")

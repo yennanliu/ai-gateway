@@ -4,7 +4,25 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from governance_api.auth.principal import ROLE_ORG_ADMIN, Principal
 from governance_api.db.models import App, Org, Team, User, VirtualKey
+
+
+def org_admin(org_id: str, user_id: str = "admin") -> Principal:
+    return Principal(user_id=user_id, org_id=org_id, roles=frozenset({ROLE_ORG_ADMIN}))
+
+
+def platform_admin(user_id: str = "platform") -> Principal:
+    """Org-admin role held without a bound org — can create new orgs."""
+    return Principal(user_id=user_id, org_id=None, roles=frozenset({ROLE_ORG_ADMIN}))
+
+
+def team_member(org_id: str, team_id: str, role: str, user_id: str = "member") -> Principal:
+    return Principal(user_id=user_id, org_id=org_id, team_roles={team_id: role})
+
+
+def bare(user_id: str = "nobody", org_id: str | None = None) -> Principal:
+    return Principal(user_id=user_id, org_id=org_id)
 
 
 def make_org(db: Session, name: str = "Acme") -> Org:

@@ -5,10 +5,14 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from governance_api import __version__
+from governance_api.api import apps, keys, memberships, orgs, teams, users
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="AI Gateway — Governance API", version=__version__)
+
+    for module in (orgs, teams, users, memberships, apps, keys):
+        app.include_router(module.router)
 
     @app.get("/healthz", tags=["system"])
     def healthz() -> dict[str, str]:

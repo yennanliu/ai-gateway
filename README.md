@@ -45,8 +45,8 @@ Building per the [implementation plan](doc/implementation-plan.md), test-first:
 
 - [x] **M0** — Bootstrap & CI (workspace, FastAPI `/healthz`, test harness, Vue scaffold, CI)
 - [x] **M1** — Data model & migrations (13 entities, cascades, scope resolution, Alembic)
-- [ ] **M2** — Governance API & RBAC
-- [ ] M3 — LiteLLM integration & config compiler
+- [x] **M2** — Governance API & RBAC (org/team/user/membership/app CRUD, virtual-key lifecycle, RBAC, audit)
+- [ ] **M3** — LiteLLM integration & config compiler
 - [ ] M4 — Metering, budgets & guardrails
 - [ ] M5 — Usage aggregation & billing
 - [ ] M6 — Vue admin UI
