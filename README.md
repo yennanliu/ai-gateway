@@ -7,7 +7,7 @@ private-cloud / compliance story.
 
 Docs: [system design](doc/system-design.md) · [implementation plan](doc/implementation-plan.md) ·
 [deployment & GTM](doc/deployment-and-gtm.md) · [testing & debugging](doc/testing-and-debugging.md) ·
-[runbook](doc/runbook.md).
+[full run](doc/full_run.md) · [runbook](doc/runbook.md).
 
 ## Stack
 
@@ -67,6 +67,24 @@ Notes:
   ```bash
   uv run python scripts/stub_provider.py   # :9099
   ```
+
+### Full run (with the data plane)
+
+Everything above skips the LiteLLM proxy (data plane) by default. To run the
+**full stack** — stub provider + governance-api + UI + LiteLLM proxy — and
+actually exercise `/v1/chat/completions`:
+
+```bash
+uv run python scripts/stub_provider.py &   # fake upstream provider on :9099
+make api &                                 # governance-api on :8080
+make ui &                                  # Vue UI on :5173
+make proxy                                 # installs litellm[proxy] extra, runs LiteLLM on :4000
+```
+
+`make proxy` installs the `litellm[proxy]` extra and starts the proxy on :4000,
+wired to our custom-auth hook. Once installed, `make dev` will auto-detect it
+and start the proxy too. Full walkthrough, including a sample authenticated
+`/v1/chat/completions` call and troubleshooting: [doc/full_run.md](doc/full_run.md).
 
 Test / lint:
 
