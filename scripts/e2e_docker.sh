@@ -9,7 +9,11 @@ cd "$(dirname "$0")/.."
 
 COMPOSE=(docker compose -f deploy/docker-compose/docker-compose.yml)
 CHAT_OUT="$(mktemp)"
-trap '"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true; rm -f "$CHAT_OUT"' EXIT
+cleanup() {
+  "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+  rm -f "$CHAT_OUT"
+}
+trap cleanup EXIT
 
 echo "==> Building and starting stub-provider, governance-api, seed, litellm-proxy"
 "${COMPOSE[@]}" up -d --build stub-provider governance-api seed litellm-proxy
@@ -30,7 +34,7 @@ if [ -z "$ok" ]; then
 fi
 
 echo "==> Extracting the seeded virtual key"
-KEY=$("${COMPOSE[@]}" logs --no-color seed | grep -oE 'sk-ag-[A-Za-z0-9_-]+' | head -1)
+KEY=$("${COMPOSE[@]}" logs --no-color seed | grep -oE 'sk-ag-[A-Za-z0-9_-]+' | head -1 || true)
 if [ -z "$KEY" ]; then
   echo "FAIL: no virtual key found in seed logs"
   "${COMPOSE[@]}" logs seed
@@ -40,7 +44,7 @@ fi
 echo "==> Authenticated chat completion through the real proxy"
 CODE=$(curl -s -o "$CHAT_OUT" -w "%{http_code}" localhost:4000/v1/chat/completions \
   -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
-  -d '{"model":"demo-gpt","messages":[{"role":"user","content":"hi"}]}')
+  -d '{"model":"demo-gpt","messages":[{"role":"user","content":"hi"}]}' || echo "000")
 if [ "$CODE" = "200" ] && grep -q "Hello from the AI Gateway stub" "$CHAT_OUT"; then
   echo "OK: chat completion routed through custom-auth + LiteLLM"
 else
@@ -52,7 +56,7 @@ fi
 echo "==> Unknown key is rejected"
 CODE=$(curl -s -o /dev/null -w "%{http_code}" localhost:4000/v1/chat/completions \
   -H "Authorization: Bearer sk-ag-bogus" -H "Content-Type: application/json" \
-  -d '{"model":"demo-gpt","messages":[{"role":"user","content":"hi"}]}')
+  -d '{"model":"demo-gpt","messages":[{"role":"user","content":"hi"}]}' || echo "000")
 if [ "$CODE" = "401" ]; then
   echo "OK: unknown key rejected (401)"
 else
