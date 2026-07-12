@@ -43,8 +43,9 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     port = int(os.environ.get("AIGW_STUB_PORT", "9099"))
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"stub provider listening on http://127.0.0.1:{port}")
+    host = os.environ.get("AIGW_STUB_HOST", "127.0.0.1")
+    server = ThreadingHTTPServer((host, port), Handler)
+    print(f"stub provider listening on http://{host}:{port}")
     server.serve_forever()
 
 

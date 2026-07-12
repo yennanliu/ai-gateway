@@ -5,6 +5,11 @@
 # Usage:
 #   docker compose up --build
 #   docker compose --profile scale up --build   # with Postgres + Redis
+#
+# `stub-provider` + `seed` bring the stack up pre-seeded with demo data and a
+# compiled LiteLLM config, so litellm-proxy starts ready to serve a real
+# /v1/chat/completions call with no external API key. See scripts/e2e_docker.sh
+# for a scripted one-click run of the whole thing.
 name: ai-gateway
 
 services:
@@ -20,6 +25,46 @@ services:
       - aigw-data:/data
     ports:
       - "8080:8080"
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz', timeout=2)"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  # Fake OpenAI-compatible upstream so the full stack (including a real chat
+  # completion through the proxy) runs with no real provider API key.
+  stub-provider:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/control-plane.Dockerfile
+    command: ["uv", "run", "--package", "governance-api", "python", "scripts/stub_provider.py"]
+    environment:
+      AIGW_STUB_PORT: "9099"
+      AIGW_STUB_HOST: "0.0.0.0"
+    ports:
+      - "9099:9099"
+
+  # One-shot: seed demo org/team/models (pointed at stub-provider) + compile
+  # the LiteLLM config onto the shared volume. Runs once per `up`, then exits.
+  seed:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/control-plane.Dockerfile
+    command: ["uv", "run", "--package", "governance-api", "python", "scripts/seed.py"]
+    environment:
+      AIGW_DATABASE_URL: ${AIGW_DATABASE_URL:-sqlite:////data/ai-gateway.db}
+      AIGW_LITELLM_CONFIG_PATH: /data/litellm.config.yaml
+      AIGW_STUB_URL: http://stub-provider:9099
+    volumes:
+      - aigw-data:/data
+    depends_on:
+      governance-api:
+        condition: service_healthy
+      stub-provider:
+        condition: service_started
+    restart: "no"
 
   litellm-proxy:
     build:
@@ -28,10 +73,13 @@ services:
     environment:
       AIGW_DATABASE_URL: ${AIGW_DATABASE_URL:-sqlite:////data/ai-gateway.db}
       AIGW_LITELLM_CONFIG: /data/litellm.config.yaml
+      # Dev-only stand-in credential; the stub provider ignores it (system-design §9).
+      STUB_KEY: sk-stub-docker
     volumes:
       - aigw-data:/data
     depends_on:
-      - governance-api
+      seed:
+        condition: service_completed_successfully
     ports:
       - "4000:4000"
 

@@ -33,6 +33,11 @@ def make_engine(url: str) -> Engine:
         def _fk_pragma(dbapi_conn, _record):  # type: ignore[no-untyped-def]
             cursor = dbapi_conn.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
+            # Wait up to 5s on a locked DB rather than erroring immediately, so
+            # concurrent writers sharing one SQLite file (proxy custom-auth hooks
+            # + control plane + seed in docker-compose) don't hit transient
+            # SQLITE_BUSY. No-op on Postgres (this hook only runs for SQLite).
+            cursor.execute("PRAGMA busy_timeout=5000")
             cursor.close()
 
     return engine

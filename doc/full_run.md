@@ -10,7 +10,40 @@ See also: [testing & debugging](testing-and-debugging.md#4-do-i-need-to-run-the-
 for the background on why the proxy is optional, and [system design](system-design.md)
 for the two-plane architecture.
 
-## 1. Install deps (once)
+## Option A: one click, via Docker Compose
+
+The fastest way to see the full system (including a real LiteLLM proxy) working
+is `deploy/docker-compose/docker-compose.yml`. It builds the control plane and
+data-plane images, brings up a stub upstream provider, seeds demo data, compiles
+the LiteLLM config onto a shared volume, then starts the proxy already wired to
+serve real (stubbed) inference — no host Python/uv setup, no manual seeding.
+
+```bash
+./scripts/e2e_docker.sh    # or: make e2e-docker
+```
+
+This builds and starts `stub-provider` → `governance-api` → `seed` (one-shot) →
+`litellm-proxy`, waits for the proxy to become healthy, sends a real
+`/v1/chat/completions` call through custom-auth + routing using the seeded
+virtual key, checks an unknown key is rejected (401), then tears the whole
+stack down. It's the same script CI runs (`full-system` job).
+
+To leave the stack running and poke at it yourself instead of tearing it down:
+
+```bash
+docker compose -f deploy/docker-compose/docker-compose.yml up --build
+# governance-api :8080, litellm-proxy :4000, stub provider :9099
+# virtual key printed in: docker compose -f deploy/docker-compose/docker-compose.yml logs seed
+docker compose -f deploy/docker-compose/docker-compose.yml down -v   # tear down + wipe the volume
+```
+
+Add `admin-ui` to the `up` command if you also want the Vue UI (`:8081`).
+
+## Option B: bare-metal (hot-reload dev loop)
+
+Better for iterating on the control plane or hooks with fast reload.
+
+### 1. Install deps (once)
 
 ```bash
 uv sync --all-packages          # control plane + hooks package
@@ -18,14 +51,14 @@ cd admin-ui && npm install      # UI deps
 cd ..
 ```
 
-## 2. Prepare the DB
+### 2. Prepare the DB
 
 ```bash
 make migrate                    # create local SQLite schema
 make seed                       # demo org/team/model/key; prints a virtual key + org id
 ```
 
-## 3. Start every piece
+### 3. Start every piece
 
 Run each in its own terminal (or background with `&`):
 
@@ -47,7 +80,7 @@ If `litellm.config.yaml` doesn't exist yet, the entrypoint falls back to
 artifact** compiled from the DB registry (`services/config_compiler.py`) —
 never hand-edit it.
 
-## 4. Exercise the real inference path
+### 4. Exercise the real inference path
 
 Using the virtual key printed by `make seed`:
 
@@ -61,7 +94,7 @@ curl -s localhost:4000/v1/chat/completions \
 - A successful call is metered into `usage_records` — check via
   `curl -s localhost:8080/api/v1/usage "${H[@]}"` (see the header shim below).
 
-## 5. Control-plane calls need dev auth headers
+### 5. Control-plane calls need dev auth headers
 
 There's no OIDC yet; every control-plane request needs:
 
@@ -72,7 +105,7 @@ There's no OIDC yet; every control-plane request needs:
 The UI injects these automatically after dev sign-in. For curl flows, see
 [testing & debugging §3](testing-and-debugging.md#3-manual-testing-with-curl-dev-auth).
 
-## 6. Everything running — the checklist
+### 6. Everything running — the checklist
 
 | Port | Process | Command |
 |---|---|---|
@@ -87,11 +120,30 @@ Test / lint the whole thing:
 make test            # unit: pytest (+ coverage) and vitest
 uv run pytest tests/integration   # real litellm.Router vs the stub, no proxy process needed
 make e2e             # end-to-end: boots the real server, drives the API over HTTP
+make e2e-docker      # full-system: docker compose up + a real request through LiteLLM
 make lint            # ruff + mypy
 make smoke           # shell smoke: migrate -> seed -> API -> authenticated request
 ```
 
 Reset everything: `make clean && make migrate && make seed`.
+
+## LiteLLM's own Admin UI (`/ui`) — not wired up, by design
+
+LiteLLM ships an Admin UI at `/ui` on the proxy port, but it **requires
+LiteLLM's own database** (`DATABASE_URL`, and its bundled Prisma schema is
+hardcoded to `provider = "postgresql"`) — even the username/password login flow
+calls into it to mint a session key. That's exactly the dependency this project
+avoids: per `CLAUDE.md`, **our own DB is the source of truth for virtual keys
+and spend, not LiteLLM's Prisma/Postgres key store.** Standing up a Postgres
+instance just to unlock `/ui` would reintroduce a second, parallel key/session
+store that the rest of the system doesn't know about.
+
+So there's no username/password to give you here — the Admin UI is
+intentionally left unconfigured. Manage everything (orgs, teams, keys, models,
+budgets) through our own control plane instead:
+
+- **Our admin-ui** (`make ui`, or `admin-ui` in docker compose) — the real UI for this product.
+- **Swagger** at `http://localhost:8080/docs` — try any control-plane endpoint directly.
 
 ## Troubleshooting
 
@@ -104,5 +156,8 @@ Reset everything: `make clean && make migrate && make seed`.
 - **Proxy can't find a model** — check `cat litellm.config.yaml` was compiled
   after `make seed` created the demo model; recompile via the config API or
   rerun seed.
+- **`scripts/e2e_docker.sh` fails to reach the stub provider** — the stub binds
+  `AIGW_STUB_HOST` (default `127.0.0.1`, `0.0.0.0` in docker compose so other
+  containers can reach it); if you copy the compose file, keep that override.
 - **Reset local state** — `make clean` removes the SQLite DB and caches; then
-  `make migrate && make seed`.
+  `make migrate && make seed`. For docker compose: `docker compose -f deploy/docker-compose/docker-compose.yml down -v`.

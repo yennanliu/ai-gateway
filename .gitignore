@@ -17,6 +17,7 @@ htmlcov/
 # Derived artifacts
 litellm.config.yaml
 openapi.json
+/hooks/
 
 # Node / Vue
 node_modules/

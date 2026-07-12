@@ -72,7 +72,13 @@ Notes:
 
 Everything above skips the LiteLLM proxy (data plane) by default. To run the
 **full stack** — stub provider + governance-api + UI + LiteLLM proxy — and
-actually exercise `/v1/chat/completions`:
+actually exercise `/v1/chat/completions`, one click via Docker Compose:
+
+```bash
+make e2e-docker      # docker compose up (seeded + wired) + a real request through LiteLLM
+```
+
+Or bare-metal, for a hot-reload dev loop:
 
 ```bash
 uv run python scripts/stub_provider.py &   # fake upstream provider on :9099
@@ -83,14 +89,16 @@ make proxy                                 # installs litellm[proxy] extra, runs
 
 `make proxy` installs the `litellm[proxy]` extra and starts the proxy on :4000,
 wired to our custom-auth hook. Once installed, `make dev` will auto-detect it
-and start the proxy too. Full walkthrough, including a sample authenticated
-`/v1/chat/completions` call and troubleshooting: [doc/full_run.md](doc/full_run.md).
+and start the proxy too. Full walkthrough (both options), including a sample
+authenticated `/v1/chat/completions` call and troubleshooting:
+[doc/full_run.md](doc/full_run.md).
 
 Test / lint:
 
 ```bash
 make test            # unit: pytest (+ coverage) and vitest
 make e2e             # end-to-end: boots the real server, drives the API over HTTP
+make e2e-docker      # full-system: docker compose up + real LiteLLM proxy request
 make lint            # ruff + mypy
 make smoke           # shell smoke: migrate -> seed -> API -> authenticated request
 ```

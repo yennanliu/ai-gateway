@@ -63,6 +63,19 @@ jobs:
       - name: End-to-end tests
         run: uv run pytest tests/e2e -v
 
+  full-system:
+    name: Full system (build all images + real LiteLLM proxy e2e)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build all docker images
+        # Builds every service Dockerfile (control-plane, data-plane, admin-ui,
+        # stub-provider, seed) so a broken image fails CI even if it isn't part
+        # of the e2e path. The e2e run below reuses these cached layers.
+        run: docker compose -f deploy/docker-compose/docker-compose.yml build
+      - name: docker compose up + real /v1/chat/completions through LiteLLM
+        run: ./scripts/e2e_docker.sh
+
   ui:
     name: UI (lint · test)
     runs-on: ubuntu-latest
