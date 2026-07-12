@@ -20,7 +20,21 @@ fi
 CONFIG_DIR="$(cd "$(dirname "$CONFIG")" && pwd)"
 mkdir -p "$CONFIG_DIR/hooks"
 cat > "$CONFIG_DIR/hooks/auth.py" <<'PY'
-from hooks.auth import user_api_key_auth  # noqa: F401
+import os
+import sys
+
+# The proxy execs this file directly (see entrypoint.sh above); make sure `hooks`
+# resolves to the installed aigw-hooks package and never this shim's own dir,
+# even if CONFIG_DIR is on sys.path -- otherwise `hooks` binds to this file as a
+# namespace package and the import below re-imports itself (circular import).
+_shim_dir = os.path.dirname(os.path.abspath(__file__))
+_config_dir = os.path.dirname(_shim_dir)
+_saved_path = sys.path[:]
+try:
+    sys.path = [p for p in sys.path if os.path.abspath(p or ".") not in (_shim_dir, _config_dir)]
+    from hooks.auth import user_api_key_auth  # noqa: F401
+finally:
+    sys.path = _saved_path
 PY
 
 echo "==> Starting LiteLLM proxy on :$PORT with config $CONFIG"

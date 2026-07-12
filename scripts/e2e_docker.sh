@@ -20,7 +20,7 @@ echo "==> Building and starting stub-provider, governance-api, seed, litellm-pro
 
 echo "==> Waiting for the LiteLLM proxy to become healthy (seed runs first)"
 ok=""
-for _ in $(seq 1 90); do
+for ((i = 1; i <= 90; i++)); do
   if curl -sf localhost:4000/health/liveliness >/dev/null 2>&1; then
     ok=1
     break
