@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from governance_api import __version__
@@ -16,7 +19,8 @@ from governance_api.api import (
     teams,
     users,
 )
-from governance_api.config import COMPATIBLE_LITELLM
+from governance_api.banner import show_banner
+from governance_api.config import COMPATIBLE_LITELLM, settings
 
 API_DESCRIPTION = """
 Control-plane API for **AI Gateway** — governance, virtual keys, model registry,
@@ -43,6 +47,16 @@ OPENAPI_TAGS = [
 ]
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    show_banner(
+        version=__version__,
+        litellm_version=COMPATIBLE_LITELLM,
+        environment=settings.environment,
+    )
+    yield
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="AI Gateway — Governance API",
@@ -52,6 +66,7 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         contact={"name": "AI Gateway", "url": "https://github.com/yennanliu/ai-gateway"},
+        lifespan=_lifespan,
     )
 
     for module in (orgs, teams, users, memberships, apps, keys, models, config, billing):
