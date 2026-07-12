@@ -12,5 +12,16 @@ if [ ! -f "$CONFIG" ]; then
   CONFIG="$(dirname "$0")/config.template.yaml"
 fi
 
+# LiteLLM resolves custom_auth as a .py file next to --config and execs it
+# without registering it in sys.modules, which crashes on our frozen dataclass
+# + `from __future__ import annotations`. Regenerate a shim there every start
+# (repo root locally, the shared /data volume in docker-compose) that just
+# re-imports the real module through the normal import system instead.
+CONFIG_DIR="$(cd "$(dirname "$CONFIG")" && pwd)"
+mkdir -p "$CONFIG_DIR/hooks"
+cat > "$CONFIG_DIR/hooks/auth.py" <<'PY'
+from hooks.auth import user_api_key_auth  # noqa: F401
+PY
+
 echo "==> Starting LiteLLM proxy on :$PORT with config $CONFIG"
 exec litellm --config "$CONFIG" --port "$PORT"

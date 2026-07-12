@@ -63,6 +63,14 @@ jobs:
       - name: End-to-end tests
         run: uv run pytest tests/e2e -v
 
+  full-system:
+    name: Full system (docker compose + real LiteLLM proxy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose up + real /v1/chat/completions through LiteLLM
+        run: ./scripts/e2e_docker.sh
+
   ui:
     name: UI (lint · test)
     runs-on: ubuntu-latest

@@ -11,10 +11,11 @@ with no external services (SQLite, in-process cache, bundled stub provider).
 | UI | `make test-ui` / `cd admin-ui && npm run test:unit` | Vue stores, client, components (vitest) |
 | Integration (LiteLLM) | `uv run pytest tests/integration` | Real `litellm.Router` routing + fallback vs a stub provider |
 | **E2E (real server)** | `make e2e` / `uv run pytest tests/e2e` | Boots uvicorn as a subprocess, drives the full governance lifecycle over HTTP |
+| **Full system (docker compose)** | `make e2e-docker` / `./scripts/e2e_docker.sh` | Real LiteLLM proxy + control plane + stub provider in containers; a real `/v1/chat/completions` through custom-auth + routing, plus a 401 for an unknown key |
 | Smoke (shell) | `make smoke` / `./scripts/smoke.sh` | Clean DB → migrate → seed → API → authenticated request |
 | Lint / types | `make lint` | ruff + mypy (strict) |
 
-`make test` runs unit + UI. `make e2e` is separate (it starts a real server, so it's slower). CI runs all of them (`backend`, `migrations-postgres`, `e2e`, `ui` jobs).
+`make test` runs unit + UI. `make e2e` and `make e2e-docker` are separate (they start real processes/containers, so they're slower). CI runs all of them (`backend`, `migrations-postgres`, `e2e`, `full-system`, `ui` jobs).
 
 ## 2. Interactive API docs (Swagger / OpenAPI)
 
@@ -67,7 +68,14 @@ route real inference.
 (it probes for it and skips otherwise, so the default dev loop stays light).
 
 You **do** need the proxy running to exercise the real inference path
-(`/v1/chat/completions` → custom-auth → routing/fallback → metering). Easiest:
+(`/v1/chat/completions` → custom-auth → routing/fallback → metering). Easiest —
+one click, no host setup, via Docker Compose:
+
+```bash
+make e2e-docker    # docker compose up (seeded + wired) + a real request through LiteLLM
+```
+
+Or bare-metal:
 
 ```bash
 make proxy    # installs litellm[proxy] and runs the proxy on :4000
