@@ -73,8 +73,8 @@ jobs:
         # stub-provider, seed) so a broken image fails CI even if it isn't part
         # of the e2e path. The e2e run below reuses these cached layers.
         run: docker compose -f deploy/docker-compose/docker-compose.yml build
-      - name: docker compose up + real /v1/chat/completions through LiteLLM
-        run: ./scripts/e2e_docker.sh
+      - name: Comprehensive full-system e2e QA (both planes, over real HTTP)
+        run: ./scripts/e2e_docker_qa.sh
 
   ui:
     name: UI (lint · test)

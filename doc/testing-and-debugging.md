@@ -11,7 +11,8 @@ with no external services (SQLite, in-process cache, bundled stub provider).
 | UI | `make test-ui` / `cd admin-ui && npm run test:unit` | Vue stores, client, components (vitest) |
 | Integration (LiteLLM) | `uv run pytest tests/integration` | Real `litellm.Router` routing + fallback vs a stub provider |
 | **E2E (real server)** | `make e2e` / `uv run pytest tests/e2e` | Boots uvicorn as a subprocess, drives the full governance lifecycle over HTTP |
-| **Full system (docker compose)** | `make e2e-docker` / `./scripts/e2e_docker.sh` | Real LiteLLM proxy + control plane + stub provider in containers; a real `/v1/chat/completions` through custom-auth + routing, plus a 401 for an unknown key |
+| **Full system QA (docker compose)** | `make e2e-docker` / `./scripts/e2e_docker_qa.sh` | Real LiteLLM proxy + control plane + stub provider in containers; ~34 assertions across both planes (health/version, auth 401, RBAC 403, model registry, teams, usage/billing, real chat completions, `/v1/models`, and the issue→use→revoke→reject key lifecycle) |
+| Full system smoke (docker compose) | `make e2e-docker-smoke` / `./scripts/e2e_docker.sh` | Fast variant: a real `/v1/chat/completions` through custom-auth + routing, plus a 401 for an unknown key |
 | Smoke (shell) | `make smoke` / `./scripts/smoke.sh` | Clean DB → migrate → seed → API → authenticated request |
 | Lint / types | `make lint` | ruff + mypy (strict) |
 

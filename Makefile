@@ -1,7 +1,7 @@
 ALEMBIC = uv run alembic -c control-plane/governance-api/alembic.ini
 UI_DIR = admin-ui
 
-.PHONY: help install dev api ui proxy test test-py test-ui e2e e2e-docker smoke lint format migrate revision seed openapi clean
+.PHONY: help install dev api ui proxy test test-py test-ui e2e e2e-docker e2e-docker-smoke smoke lint format migrate revision seed openapi clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -34,7 +34,10 @@ test-ui: ## Run UI tests (if present)
 e2e: ## Run end-to-end tests (boots the real server over HTTP)
 	uv run pytest tests/e2e -v
 
-e2e-docker: ## Full-system e2e: docker compose up a real LiteLLM proxy + control plane, drive a real request
+e2e-docker: ## Full-system e2e QA: docker compose up + comprehensive assertions across both planes
+	./scripts/e2e_docker_qa.sh
+
+e2e-docker-smoke: ## Fast full-system smoke: docker compose up + one real request + a 401
 	./scripts/e2e_docker.sh
 
 smoke: ## Run the shell smoke script (migrate -> seed -> API -> request)
