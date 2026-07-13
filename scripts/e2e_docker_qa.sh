@@ -45,11 +45,16 @@ ko() {
 }
 
 # http <method> <url> [extra curl args...] -> sets LAST_CODE, LAST_BODY (file)
+# Each call writes to its own body file so a failed curl can never leave a stale
+# body for a later assert_body/assert_rejected to match. -sS stays quiet on
+# progress but surfaces curl's own connection errors on stderr for CI debugging.
+REQ_COUNT=0
 http() {
   local method=$1 url=$2
   shift 2
-  LAST_BODY="$WORKDIR/body.$$"
-  LAST_CODE=$(curl -s -o "$LAST_BODY" -w '%{http_code}' -X "$method" "$url" "$@" || echo "000")
+  REQ_COUNT=$((REQ_COUNT + 1))
+  LAST_BODY="$WORKDIR/body.$REQ_COUNT"
+  LAST_CODE=$(curl -sS -o "$LAST_BODY" -w '%{http_code}' -X "$method" "$url" "$@" || echo "000")
 }
 
 # assert_code <desc> <want> : checks LAST_CODE from the preceding http call
@@ -72,7 +77,7 @@ assert_rejected() {
 }
 
 json_field() { # <file> <field> -> first value of "field":"<val>" (string) or "field":<num>
-  grep -oE "\"$2\":\"?[^\",}]+\"?" "$1" | head -1 | sed -E "s/\"$2\"://; s/^\"//; s/\"$//"
+  grep -oE "\"$2\":\"?[^\",}]+\"?" "$1" | head -1 | sed -E "s/\"$2\"://; s/^\"//; s/\"$//" || true
 }
 
 # ---- bring the stack up ------------------------------------------------------
@@ -177,8 +182,8 @@ section "Cross-plane: control-plane key lifecycle enforced by the data plane"
 http POST "$GOV/api/v1/keys" "${ADMIN[@]}" "${JSON[@]}" \
   -d "{\"team_id\":\"$TEAM_ID\",\"allowed_models\":[\"demo-gpt\"]}"
 assert_code "issue a fresh key via control plane" 201
-NEWKEY=$(grep -oE '"key":"sk-ag-[A-Za-z0-9_-]+"' "$LAST_BODY" | head -1 | sed -E 's/.*"(sk-ag-[A-Za-z0-9_-]+)".*/\1/')
-NEWKEY_ID=$(grep -oE '"id":"[0-9a-f]{32}"' "$LAST_BODY" | head -1 | grep -oE '[0-9a-f]{32}')
+NEWKEY=$(json_field "$LAST_BODY" "key")
+NEWKEY_ID=$(json_field "$LAST_BODY" "id")
 if [ -z "$NEWKEY" ] || [ -z "$NEWKEY_ID" ]; then ko "parse issued key id/secret"; else
   chat "$NEWKEY" "demo-gpt"
   assert_code "freshly issued key works through the proxy" 200
@@ -198,7 +203,7 @@ fi
 section "Billing & usage aggregation (control plane)"
 http GET "$GOV/api/v1/usage?group_by=model" "${ADMIN[@]}"
 assert_code "GET /api/v1/usage?group_by=model" 200
-TOTAL_REQ=$(grep -oE '"requests":[0-9]+' "$LAST_BODY" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
+TOTAL_REQ=$(grep -oE '"requests":[0-9]+' "$LAST_BODY" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true)
 if [ "${TOTAL_REQ:-0}" -gt 0 ]; then
   ok "usage aggregation reports seeded requests (total=$TOTAL_REQ)"
 else
