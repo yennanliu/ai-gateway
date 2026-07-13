@@ -45,7 +45,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
-      - run: uv sync --all-packages --extra postgres
+      - run: uv sync --all-packages
       - name: Apply migrations (Postgres)
         run: uv run alembic -c control-plane/governance-api/alembic.ini upgrade head
       - name: Model/migration drift guard

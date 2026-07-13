@@ -208,4 +208,4 @@ Reset everything: `make clean && make migrate && make seed`.
 - **Verbose API logs:** run `uv run uvicorn governance_api.main:app --reload --log-level debug`.
 - **Single test:** `uv run pytest -k <name> -v` (add `-s` to see prints).
 - **Coverage gaps:** `make test-py` prints missing lines per file.
-- **Reproduce CI's Postgres path:** set `AIGW_DATABASE_URL=postgresql+psycopg://…` and `uv run alembic … upgrade head` (needs `--extra postgres`).
+- **Reproduce CI's Postgres path:** set `AIGW_DATABASE_URL=postgresql+psycopg://…` and `uv run alembic … upgrade head` (the `psycopg` driver ships as a base dependency, so no extra is needed).

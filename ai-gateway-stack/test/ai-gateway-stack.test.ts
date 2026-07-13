@@ -1,17 +1,38 @@
 import * as cdk from 'aws-cdk-lib/core';
-import { Template, Match } from 'aws-cdk-lib/assertions';
-import * as AiGatewayStack from '../lib/ai-gateway-stack-stack';
+import { Template } from 'aws-cdk-lib/assertions';
+import { AiGatewayStack } from '../lib/ai-gateway-stack';
 
-test('SQS Queue and SNS Topic Created', () => {
+/**
+ * Phase 1 shape assertions. These are structural (counts / key properties), not
+ * a full snapshot, so they stay stable as the stack grows into Phase 2.
+ */
+function synth(): Template {
   const app = new cdk.App();
-  // WHEN
-  const stack = new AiGatewayStack.AiGatewayStackStack(app, 'MyTestStack');
-  // THEN
+  const stack = new AiGatewayStack(app, 'TestStack', { resourceName: 'ai-gateway-test' });
+  return Template.fromStack(stack);
+}
 
-  const template = Template.fromStack(stack);
+test('deploys both planes plus the UI: three ECS services', () => {
+  synth().resourceCountIs('AWS::ECS::Service', 3);
+});
 
-  template.hasResourceProperties('AWS::SQS::Queue', {
-    VisibilityTimeout: 300
-  });
-  template.resourceCountIs('AWS::SNS::Topic', 1);
+test('a single RDS PostgreSQL instance is the shared source of truth', () => {
+  const t = synth();
+  t.resourceCountIs('AWS::RDS::DBInstance', 1);
+  t.hasResourceProperties('AWS::RDS::DBInstance', { Engine: 'postgres' });
+});
+
+test('one public, internet-facing ALB fronts the stack', () => {
+  const t = synth();
+  t.resourceCountIs('AWS::ElasticLoadBalancingV2::LoadBalancer', 1);
+  t.hasResourceProperties('AWS::ElasticLoadBalancingV2::LoadBalancer', { Scheme: 'internet-facing' });
+});
+
+test('no shared filesystem: the data plane self-compiles config at boot', () => {
+  synth().resourceCountIs('AWS::EFS::FileSystem', 0);
+});
+
+test('path routing splits /api, /v1 and the default UI target', () => {
+  // Default + two prefix rules => three target groups behind one listener.
+  synth().resourceCountIs('AWS::ElasticLoadBalancingV2::TargetGroup', 3);
 });
