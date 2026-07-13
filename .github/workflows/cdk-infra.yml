@@ -1,0 +1,39 @@
+name: CDK Infra
+
+# Type-checks and shape-tests the AWS CDK deployment app. Runs only when the
+# infra changes. No AWS credentials are needed: the Jest tests synthesize the
+# CloudFormation template in-process (asset image builds are deferred to
+# `cdk deploy`), so this validates types + stack shape without Docker or a cloud
+# account.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ai-gateway-stack/**"
+      - ".github/workflows/cdk-infra.yml"
+  pull_request:
+    paths:
+      - "ai-gateway-stack/**"
+      - ".github/workflows/cdk-infra.yml"
+
+defaults:
+  run:
+    working-directory: ai-gateway-stack
+
+jobs:
+  cdk:
+    name: Build · test · synth-shape
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ai-gateway-stack/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Build (tsc)
+        run: npm run build
+      - name: Test (jest — synthesizes the stack template)
+        run: npm test

@@ -16,8 +16,10 @@ test('deploys both planes plus the UI: three ECS services', () => {
   synth().resourceCountIs('AWS::ECS::Service', 3);
 });
 
-test('Aurora PostgreSQL is the shared source of truth', () => {
-  synth().hasResourceProperties('AWS::RDS::DBCluster', { Engine: 'aurora-postgresql' });
+test('a single RDS PostgreSQL instance is the shared source of truth', () => {
+  const t = synth();
+  t.resourceCountIs('AWS::RDS::DBInstance', 1);
+  t.hasResourceProperties('AWS::RDS::DBInstance', { Engine: 'postgres' });
 });
 
 test('one public, internet-facing ALB fronts the stack', () => {
@@ -26,8 +28,8 @@ test('one public, internet-facing ALB fronts the stack', () => {
   t.hasResourceProperties('AWS::ElasticLoadBalancingV2::LoadBalancer', { Scheme: 'internet-facing' });
 });
 
-test('control plane and data plane share the compiled-config volume (EFS)', () => {
-  synth().resourceCountIs('AWS::EFS::FileSystem', 1);
+test('no shared filesystem: the data plane self-compiles config at boot', () => {
+  synth().resourceCountIs('AWS::EFS::FileSystem', 0);
 });
 
 test('path routing splits /api, /v1 and the default UI target', () => {

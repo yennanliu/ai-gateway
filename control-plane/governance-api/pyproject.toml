@@ -12,10 +12,12 @@ dependencies = [
     "pydantic-settings>=2.5",
     "email-validator>=2.2",
     "pyyaml>=6.0",
+    # Postgres driver. Base (not optional) so every image/`uv run` has it: both
+    # planes connect to Postgres in any multi-host deploy (e.g. AWS/RDS), and
+    # SQLite stays the zero-config local default regardless. Binary wheel — no
+    # system libpq needed.
+    "psycopg[binary]>=3.2",
 ]
-
-[project.optional-dependencies]
-postgres = ["psycopg[binary]>=3.2"]
 
 [build-system]
 requires = ["hatchling"]

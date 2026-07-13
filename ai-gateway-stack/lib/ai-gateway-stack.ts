@@ -2,7 +2,6 @@ import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-l
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as efs from 'aws-cdk-lib/aws-efs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
@@ -12,35 +11,30 @@ import { Construct } from 'constructs';
 import { FargateAppService } from './constructs/fargate-app-service';
 
 /**
- * AI Gateway on AWS — Phase 1 (single-stack, working end-to-end).
- *
- * Deploys BOTH planes of the gateway and everything they need:
+ * AI Gateway on AWS — Phase 1 (single-stack, deliberately simple, works E2E).
  *
  *   Internet ─▶ ALB (HTTP :80, path-routed)
  *                 ├── /            ─▶ Admin UI  (Vue + nginx, :80)
  *                 ├── /api/* /docs ─▶ Control plane (governance-api, :8080)
  *                 └── /v1/*        ─▶ Data plane (LiteLLM proxy + hooks, :4000)
  *                          │
- *              private ────┼──────────────┐
- *                          ▼              ▼
- *                   Aurora PG v2      EFS (shared compiled LiteLLM config)
+ *                          ▼
+ *                   RDS PostgreSQL (t4g) — source of truth for keys + spend
  *
  * The invariant from `doc/system-design.md` holds on AWS: our Postgres is the
- * source of truth for keys + spend. SQLite cannot be shared across Fargate
- * tasks, so Phase 1 uses Aurora Postgres Serverless v2 from the start. The
- * control plane compiles the LiteLLM config onto a shared EFS volume; the data
- * plane reads it — the AWS analogue of the docker-compose `/data` volume.
+ * source of truth. SQLite can't be shared across Fargate tasks, so Phase 1 uses
+ * a small managed Postgres (single RDS t4g instance — the cheapest simple
+ * option) from the start.
  *
- * Provider access defaults to **Amazon Bedrock via IAM** (no API keys): the
- * data-plane task role can invoke Bedrock models directly. Register a Bedrock
- * model in the console/API, POST /api/v1/config/compile, then roll the data
- * plane to pick up the new config.
- *
- * TLS/HTTPS, Redis, autoscaling, WAF and a CI image pipeline are Phase 2 — see
- * `doc/aws-cdk-deployment.md`.
+ * No shared filesystem. The data plane **self-compiles** its LiteLLM config from
+ * the DB into container-local storage at boot (`scripts/compile_config.py`), so
+ * there is no EFS/S3 to coordinate — rolling the data plane picks up any
+ * registry change. Provider access defaults to **Amazon Bedrock via IAM** (no
+ * keys). TLS, Redis, autoscaling, WAF and a CI image pipeline are later phases —
+ * see `doc/aws-cdk-deployment.md`.
  */
 export interface AiGatewayStackProps extends StackProps {
-  /** Base name for trackable resources (cluster, ALB, DB, log group). */
+  /** Base name for trackable resources (DB, cluster, ALB, log group). */
   readonly resourceName?: string;
 }
 
@@ -51,7 +45,8 @@ export class AiGatewayStack extends Stack {
     const resourceName = props?.resourceName ?? id;
     const dbName = 'aigw';
     const repoRoot = path.join(__dirname, '..', '..');
-    const configPath = '/data/litellm.config.yaml';
+    // Container-local config path ("instance memory") — /tmp is always writable.
+    const configPath = '/tmp/litellm.config.yaml';
 
     // Ports each plane listens on (mirrors docker-compose).
     const CONTROL_PORT = 8080;
@@ -63,7 +58,7 @@ export class AiGatewayStack extends Stack {
     // =====================================================================
     const vpc = new ec2.Vpc(this, 'Vpc', {
       maxAzs: 2,
-      natGateways: 1, // single NAT keeps Phase 1 cheap; use one-per-AZ in prod
+      natGateways: 1, // single NAT keeps Phase 1 cheap; one-per-AZ in prod
       subnetConfiguration: [
         { name: 'public', subnetType: ec2.SubnetType.PUBLIC, cidrMask: 24 },
         { name: 'private', subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS, cidrMask: 24 },
@@ -71,11 +66,11 @@ export class AiGatewayStack extends Stack {
     });
 
     // =====================================================================
-    // Phase 1 · Data — Aurora PostgreSQL Serverless v2 (source of truth)
+    // Phase 1 · Data — a single small RDS PostgreSQL instance (t4g)
     // =====================================================================
     const dbSecurityGroup = new ec2.SecurityGroup(this, 'DbSg', {
       vpc,
-      description: 'AI Gateway Aurora — ingress from the gateway services only',
+      description: 'AI Gateway RDS — ingress from the gateway services only',
       allowAllOutbound: false,
     });
 
@@ -86,31 +81,36 @@ export class AiGatewayStack extends Stack {
       excludeCharacters: "!\"#$%&'()*+,/:;<=>?@[\\]^`{|}~ ",
     });
 
-    const db = new rds.DatabaseCluster(this, 'Database', {
-      clusterIdentifier: `${resourceName}-db`,
-      engine: rds.DatabaseClusterEngine.auroraPostgres({
-        version: rds.AuroraPostgresEngineVersion.VER_16_9,
+    const db = new rds.DatabaseInstance(this, 'Database', {
+      instanceIdentifier: `${resourceName}-db`,
+      engine: rds.DatabaseInstanceEngine.postgres({
+        version: rds.PostgresEngineVersion.VER_16_9,
       }),
+      // Smallest Graviton burstable — cheap and enough for the control plane,
+      // which is not the hot path (system-design). Bump the size in prod.
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE4_GRAVITON, ec2.InstanceSize.MICRO),
       credentials: dbCredentials,
-      defaultDatabaseName: dbName,
-      writer: rds.ClusterInstance.serverlessV2('writer'),
-      serverlessV2MinCapacity: 0.5,
-      serverlessV2MaxCapacity: 2,
+      databaseName: dbName,
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       securityGroups: [dbSecurityGroup],
+      allocatedStorage: 20,
+      storageType: rds.StorageType.GP3,
+      multiAz: false, // single-AZ in Phase 1; Multi-AZ in prod
       storageEncrypted: true,
+      backupRetention: Duration.days(1),
+      deleteAutomatedBackups: true,
       removalPolicy: RemovalPolicy.DESTROY, // dev; SNAPSHOT/RETAIN in prod
     });
     const dbSecret = db.secret!;
 
     // Both planes read the same connection parts; only the credentials are
-    // secret. The password/username arrive via Secrets Manager; host/port/name
-    // are non-sensitive plain env. A shell wrapper assembles AIGW_DATABASE_URL
-    // so no secret is ever baked into the task definition or image.
+    // secret. Username/password arrive via Secrets Manager; host/port/name are
+    // non-sensitive plain env. A shell wrapper assembles AIGW_DATABASE_URL at
+    // startup so no secret is baked into the task definition or image.
     const dbEnvironment: Record<string, string> = {
-      DB_HOST: db.clusterEndpoint.hostname,
-      DB_PORT: db.clusterEndpoint.port.toString(),
+      DB_HOST: db.dbInstanceEndpointAddress,
+      DB_PORT: db.dbInstanceEndpointPort,
       DB_NAME: dbName,
     };
     const dbSecrets: Record<string, ecs.Secret> = {
@@ -119,24 +119,6 @@ export class AiGatewayStack extends Stack {
     };
     const exportDbUrl =
       'export AIGW_DATABASE_URL="postgresql+psycopg://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}"';
-
-    // =====================================================================
-    // Phase 1 · Shared config volume (EFS) — compiled LiteLLM config
-    // =====================================================================
-    const fileSystem = new efs.FileSystem(this, 'SharedConfig', {
-      vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-      encrypted: true,
-      lifecyclePolicy: efs.LifecyclePolicy.AFTER_30_DAYS,
-      removalPolicy: RemovalPolicy.DESTROY, // dev; RETAIN in prod
-    });
-    // Root-owned access point: both containers run as root and share `/data`.
-    const accessPoint = fileSystem.addAccessPoint('DataAp', {
-      path: '/data',
-      createAcl: { ownerUid: '0', ownerGid: '0', permissions: '0755' },
-      posixUser: { uid: '0', gid: '0' },
-    });
-    const efsMount = { fileSystem, accessPoint, containerPath: '/data' };
 
     // =====================================================================
     // Phase 1 · Compute — ECS Fargate cluster + container images
@@ -170,12 +152,18 @@ export class AiGatewayStack extends Stack {
       platform,
     });
 
-    // Inner commands come straight from each Dockerfile's CMD; we only prepend
-    // the DATABASE_URL assembly (see above).
+    // Inner commands come straight from each Dockerfile's CMD; we prepend the
+    // DATABASE_URL assembly, and (data plane) a self-compile of the config.
     const controlCmd =
       'uv run --package governance-api alembic -c control-plane/governance-api/alembic.ini upgrade head && ' +
       'uv run --package governance-api uvicorn governance_api.main:app --host 0.0.0.0 --port ' + CONTROL_PORT;
-    const dataCmd = 'uv run --package aigw-hooks bash data-plane/litellm/entrypoint.sh';
+    // Compile the LiteLLM config from the DB, then start the proxy. If the
+    // registry is empty (fresh deploy) the compile still writes an empty
+    // model_list and the entrypoint's fallback wires custom_auth, so the proxy
+    // comes up healthy.
+    const dataCmd =
+      'uv run --package aigw-hooks python scripts/compile_config.py || echo "compile_config failed; using template"; ' +
+      'exec uv run --package aigw-hooks bash data-plane/litellm/entrypoint.sh';
 
     // ---- Control plane (governance-api) --------------------------------
     const control = new FargateAppService(this, 'ControlPlane', {
@@ -188,13 +176,12 @@ export class AiGatewayStack extends Stack {
       memoryLimitMiB: 1024,
       environment: {
         ...dbEnvironment,
-        AIGW_LITELLM_CONFIG_PATH: configPath,
+        AIGW_LITELLM_CONFIG_PATH: configPath, // local; used by POST /config/compile for validation
         AIGW_ENVIRONMENT: 'aws',
       },
       secrets: dbSecrets,
       entryPoint: ['/bin/sh', '-c'],
       command: [`${exportDbUrl} && exec sh -c '${controlCmd}'`],
-      efsMount, // writes the compiled LiteLLM config here
       healthCheckGracePeriod: Duration.seconds(120),
     });
 
@@ -209,14 +196,14 @@ export class AiGatewayStack extends Stack {
       memoryLimitMiB: 2048,
       environment: {
         ...dbEnvironment,
-        AIGW_LITELLM_CONFIG: configPath,
+        AIGW_LITELLM_CONFIG: configPath, // entrypoint reads this
+        AIGW_LITELLM_CONFIG_PATH: configPath, // compile_config.py writes this
         AIGW_PROXY_PORT: DATA_PORT.toString(),
       },
       secrets: dbSecrets,
       entryPoint: ['/bin/sh', '-c'],
-      command: [`${exportDbUrl} && exec ${dataCmd}`],
-      efsMount, // reads the compiled config + writes hook shims
-      healthCheckGracePeriod: Duration.seconds(120),
+      command: [`${exportDbUrl} && ${dataCmd}`],
+      healthCheckGracePeriod: Duration.seconds(150),
     });
 
     // Zero-key provider path: let the data plane invoke Bedrock models via IAM.
@@ -238,10 +225,9 @@ export class AiGatewayStack extends Stack {
       memoryLimitMiB: 512,
     });
 
-    // ---- Connectivity: services -> Aurora (5432) and -> EFS (2049) -----
+    // ---- Connectivity: control + data planes -> RDS (5432) -------------
     for (const svc of [control.service, data.service]) {
-      db.connections.allowDefaultPortFrom(svc, 'gateway service to Aurora');
-      fileSystem.connections.allowDefaultPortFrom(svc, 'gateway service to EFS');
+      db.connections.allowDefaultPortFrom(svc, 'gateway service to RDS');
     }
 
     // =====================================================================
@@ -282,13 +268,10 @@ export class AiGatewayStack extends Stack {
     const controlTg = makeTargetGroup('ControlTg', CONTROL_PORT, control.service, '/healthz');
     const dataTg = makeTargetGroup('DataTg', DATA_PORT, data.service, '/health/liveliness');
 
-    // Default: the SPA. Specific prefixes: control plane and data plane. The
-    // control plane owns `/api/*` and `/healthz`; the data plane owns `/v1/*`
-    // and `/health/*` — disjoint, so no rule collides.
+    // Default: the SPA. ALB allows at most 5 path values per condition, so each
+    // rule stays <= 5. `/api/*` covers every control-plane route (all under
+    // /api/v1); `/v1/*` covers the OpenAI surface. The prefixes are disjoint.
     listener.addTargetGroups('Default', { targetGroups: [uiTg] });
-    // ALB allows at most 5 path values per condition, so each rule stays <= 5.
-    // `/api/*` covers every control-plane route (all under /api/v1); `/v1/*`
-    // covers the OpenAI surface (chat/completions, embeddings, models, ...).
     listener.addTargetGroups('ControlPlane', {
       priority: 10,
       conditions: [
@@ -309,48 +292,36 @@ export class AiGatewayStack extends Stack {
     });
 
     // =====================================================================
-    // Phase 1 · Seed task (optional) — demo data + compiled config
+    // Phase 1 · Seed task (optional) — demo data in the DB
     // =====================================================================
     // Not run automatically. After deploy, `aws ecs run-task` this once to seed
-    // a demo org/team/models/key and compile a config. Note: seeded demo models
-    // point at a stub that is NOT deployed on AWS, so it exercises the control
-    // plane + UI; for a real /v1 call, register a Bedrock model instead.
+    // a demo org/team/models/key. Seeded demo models point at a stub that is NOT
+    // deployed on AWS, so this exercises the control plane + UI; for a real /v1
+    // call, register a Bedrock model instead. (The data plane self-compiles at
+    // boot, so a data-plane roll after seeding picks the models up.)
     const seedSg = new ec2.SecurityGroup(this, 'SeedSg', {
       vpc,
       description: 'AI Gateway one-shot seed task',
     });
-    db.connections.allowDefaultPortFrom(seedSg, 'seed task to Aurora');
-    fileSystem.connections.allowDefaultPortFrom(seedSg, 'seed task to EFS');
+    db.connections.allowDefaultPortFrom(seedSg, 'seed task to RDS');
 
     const seedTask = new ecs.FargateTaskDefinition(this, 'SeedTask', {
       cpu: 512,
       memoryLimitMiB: 1024,
     });
-    seedTask.addVolume({
-      name: 'shared-config',
-      efsVolumeConfiguration: {
-        fileSystemId: fileSystem.fileSystemId,
-        transitEncryption: 'ENABLED',
-        authorizationConfig: { accessPointId: accessPoint.accessPointId, iam: 'DISABLED' },
-      },
-    });
-    const seedContainer = seedTask.addContainer('seed', {
+    seedTask.addContainer('seed', {
       image: controlImage,
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'seed', logGroup }),
       environment: {
         ...dbEnvironment,
-        AIGW_LITELLM_CONFIG_PATH: configPath,
+        AIGW_LITELLM_CONFIG_PATH: configPath, // local; discarded
         AIGW_STUB_URL: 'http://stub-provider:9099', // not deployed; demo only
       },
       secrets: dbSecrets,
       entryPoint: ['/bin/sh', '-c'],
       command: [`${exportDbUrl} && exec uv run --package governance-api python scripts/seed.py`],
     });
-    seedContainer.addMountPoints({
-      sourceVolume: 'shared-config',
-      containerPath: '/data',
-      readOnly: false,
-    });
+
     // =====================================================================
     // Outputs
     // =====================================================================
@@ -366,7 +337,7 @@ export class AiGatewayStack extends Stack {
     });
     new CfnOutput(this, 'DbSecretArn', {
       value: dbSecret.secretArn,
-      description: 'Aurora credentials secret (username/password/host/port)',
+      description: 'RDS credentials secret (username/password/host/port)',
     });
     new CfnOutput(this, 'ClusterName', { value: cluster.clusterName });
     new CfnOutput(this, 'SeedTaskFamily', {

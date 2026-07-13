@@ -13,21 +13,22 @@ One stack, everything it needs to serve a governed request end to end:
 | Ingress | Application Load Balancer (HTTP :80) | Path-routed to the three services |
 | Admin UI | ECS Fargate (Vue + nginx) | Default `/` route |
 | Control plane | ECS Fargate (`governance-api`, :8080) | `/api/*`, `/docs`, `/healthz` |
-| Data plane | ECS Fargate (LiteLLM + hooks, :4000) | `/v1/*`, `/health/*` |
-| Source of truth | Aurora PostgreSQL Serverless v2 | Keys + spend; shared by both planes |
-| Shared config | EFS | Control plane compiles the LiteLLM config here; data plane reads it |
+| Data plane | ECS Fargate (LiteLLM + hooks, :4000) | `/v1/*`, `/health/*`; self-compiles its config from the DB at boot |
+| Source of truth | RDS PostgreSQL (`t4g.micro`) | Keys + spend; shared by both planes |
 | Secrets | Secrets Manager | DB credentials (auto-generated) |
 | Providers | Amazon Bedrock via IAM | Zero-key default; the data-plane task role can invoke Bedrock |
+
+No shared filesystem: the data plane runs `scripts/compile_config.py` at startup
+to generate its LiteLLM config from the DB into container-local `/tmp` (see
+`doc/aws-cdk-deployment.md` §7).
 
 ```
 Internet ─▶ ALB :80
               ├── /            ─▶ Admin UI      (Fargate)
               ├── /api/* /docs ─▶ Control plane (Fargate) ─┐
-              └── /v1/*        ─▶ Data plane    (Fargate) ─┤
-                                        │                  │
-                              EFS (config) ◀──writes───────┘
-                                        │                  │
-                              Aurora PostgreSQL ◀──both planes, source of truth
+              └── /v1/*        ─▶ Data plane    (Fargate) ─┤ self-compiles config
+                                                           │
+                              RDS PostgreSQL ◀──both planes, source of truth
 ```
 
 ## Prerequisites
@@ -58,13 +59,13 @@ task's `run-task` network config.
 1. Enable model access for the model you want in the **Amazon Bedrock** console.
 2. Open `AdminUiUrl` (or call the API) and **register a model**: provider
    `bedrock`, e.g. model `anthropic.claude-3-5-sonnet-20240620-v1:0`.
-3. Compile the LiteLLM config (writes to EFS): `POST /api/v1/config/compile`.
-4. Roll the data plane so it reloads the config:
+3. Roll the data plane — it recompiles its config from the DB at boot:
    `aws ecs update-service --cluster <ClusterName> --service ai-gateway-v1-data-plane --force-new-deployment`.
-5. Call it: `POST {GatewayUrl}/chat/completions` with a virtual key.
+4. Call it: `POST {GatewayUrl}/chat/completions` with a virtual key.
 
-> Phase 1 has **no live config reload** — a compile is picked up on the next
-> data-plane deployment. Phase 2 wires an automatic reload (see the doc).
+> Phase 1 has **no live config reload** and no shared filesystem — the data plane
+> self-compiles its config from the DB at startup, so the roll in step 3 *is* the
+> reload. Phase 2 wires an automatic (no-roll) reload (see the doc).
 
 ## Optional: seed demo data
 
