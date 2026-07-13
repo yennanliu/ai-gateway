@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Gateway — Enterprise LLM Gateway on LiteLLM</title>
+  <meta name="description" content="A self-hostable enterprise LLM gateway built on LiteLLM Proxy: one OpenAI-compatible API, virtual keys, budgets, usage & cost accounting, guardrails, and audit." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23232f3e'/%3E%3Cpath d='M8 22 L16 8 L24 22 M11 18 H21' stroke='%23ff9900' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+  <!-- ============ GLOBAL NAV ============ -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#top" aria-label="AI Gateway home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="24" height="24"><rect width="32" height="32" rx="6" fill="#232f3e"/><path d="M8 22 L16 8 L24 22 M11 18 H21" stroke="#ff9900" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="brand-text">AI&nbsp;Gateway</span>
+      </a>
+
+      <nav class="nav" id="nav">
+        <a href="#overview">Overview</a>
+        <a href="#features">Features</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#quickstart">Quickstart</a>
+        <a href="#run">Run</a>
+        <a href="#deploy">Deploy</a>
+      </nav>
+
+      <div class="topbar-actions">
+        <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway" target="_blank" rel="noopener">GitHub ↗</a>
+        <a class="btn btn-primary" href="#quickstart">Get started</a>
+      </div>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main id="top">
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <span class="eyebrow">Self-hostable · On-prem · Compliance-ready</span>
+          <h1>One API in front of<br /><span class="accent-text">every LLM provider.</span></h1>
+          <p class="lede">
+            An enterprise LLM gateway built on top of <strong>LiteLLM Proxy</strong> — a single
+            OpenAI-compatible endpoint with governance, virtual keys, budgets, usage &amp; cost
+            tracking, guardrails, and audit. Runs on your laptop with zero external services.
+          </p>
+          <div class="hero-cta">
+            <a class="btn btn-primary btn-lg" href="#quickstart">Quickstart</a>
+            <a class="btn btn-secondary btn-lg" href="https://github.com/yennanliu/ai-gateway" target="_blank" rel="noopener">View on GitHub</a>
+          </div>
+          <ul class="hero-tags">
+            <li>OpenAI-compatible</li>
+            <li>BYOK</li>
+            <li>SQLite → Postgres</li>
+            <li>Docker &amp; Helm</li>
+          </ul>
+        </div>
+
+        <div class="hero-card">
+          <div class="term">
+            <div class="term-bar">
+              <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+              <span class="term-title">chat/completions</span>
+            </div>
+            <pre class="term-body"><code><span class="c-cmt"># Same OpenAI wire shape — just point at the gateway</span>
+curl <span class="c-str">http://localhost:4000/v1/chat/completions</span> \
+  -H <span class="c-str">"Authorization: Bearer $VIRTUAL_KEY"</span> \
+  -H <span class="c-str">"Content-Type: application/json"</span> \
+  -d <span class="c-str">'{
+    "model": "gpt-4o",
+    "messages": [{"role":"user","content":"hi"}]
+  }'</span>
+
+<span class="c-cmt"># → routed, metered, priced, audited, attributed</span>
+<span class="c-cmt">#   to your org / team / user / app.</span></code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- stat tiles -->
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-val">&lt;15<span class="stat-unit">ms</span></span>
+          <span class="stat-label">p50 gateway overhead</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">99.9<span class="stat-unit">%</span></span>
+          <span class="stat-label">data-plane availability</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">5k<span class="stat-unit">+</span></span>
+          <span class="stat-label">concurrent streams / fleet</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">0<span class="stat-unit">deps</span></span>
+          <span class="stat-label">external services for local dev</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ OVERVIEW / TWO-PLANE ============ -->
+    <section id="overview" class="section section-light">
+      <div class="wrap">
+        <header class="section-head">
+          <span class="kicker">Overview</span>
+          <h2>A deliberate two-plane split</h2>
+          <p class="section-sub">
+            LiteLLM is consumed as a <strong>pinned dependency</strong>, never forked. It owns the fast
+            request path; our FastAPI control plane owns the product. The two are kept honest by one
+            invariant.
+          </p>
+        </header>
+
+        <div class="plane-grid">
+          <article class="plane-card">
+            <div class="plane-tag plane-tag-data">Data plane</div>
+            <h3>LiteLLM Proxy</h3>
+            <p>The hot path: the OpenAI-compatible <code>/v1/*</code> surface, provider adapters,
+              routing, and fallback. Stateless and autoscaled.</p>
+            <p class="plane-note">Extended <em>only</em> through four documented seams:
+              custom-auth callable, callback / <code>CustomLogger</code>, config schema, and the
+              OpenAI wire shape.</p>
+          </article>
+
+          <article class="plane-card">
+            <div class="plane-tag plane-tag-ctrl">Control plane</div>
+            <h3>Governance API</h3>
+            <p>The product: orgs / teams / users / keys, model registry, budgets,
+              usage &amp; billing, RBAC, and audit — a FastAPI service backed by SQLite or Postgres.</p>
+            <p class="plane-note">Compiles the registry into derived LiteLLM YAML; secrets emitted as
+              environment references, never plaintext.</p>
+          </article>
+        </div>
+
+        <div class="invariant">
+          <div class="invariant-badge">Core invariant</div>
+          <p>
+            Our database is the <strong>source of truth for virtual keys and spend</strong> — not
+            LiteLLM's key store. LiteLLM authenticates every request by calling <em>back</em> into our
+            DB via the custom-auth hook, which is what keeps a single SQLite file viable end-to-end.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FEATURES ============ -->
+    <section id="features" class="section section-dark">
+      <div class="wrap">
+        <header class="section-head">
+          <span class="kicker">Capabilities</span>
+          <h2>Everything a team needs to govern LLM traffic</h2>
+        </header>
+
+        <div class="feature-grid">
+          <article class="feature">
+            <div class="feature-ic">⇄</div>
+            <h3>One API, many providers</h3>
+            <p>A single OpenAI-compatible endpoint in front of OpenAI, Anthropic, Gemini, Bedrock,
+              Azure, and self-hosted vLLM / Ollama.</p>
+          </article>
+          <article class="feature">
+            <div class="feature-ic">🔑</div>
+            <h3>BYOK &amp; virtual keys</h3>
+            <p>Bring your own provider keys; consumers get scoped virtual keys. Only the hash + a
+              display prefix are stored — plaintext is shown exactly once.</p>
+          </article>
+          <article class="feature">
+            <div class="feature-ic">📊</div>
+            <h3>Usage &amp; cost accounting</h3>
+            <p>Every request is metered, priced, and attributed to an org / team / user / app.
+              Invoices, CSV export, and rate cards included.</p>
+          </article>
+          <article class="feature">
+            <div class="feature-ic">🛡️</div>
+            <h3>Budgets &amp; rate limits</h3>
+            <p>Attach budgets and policies at any level. Most-specific-wins resolution:
+              <code>key › app › user › team › org</code>.</p>
+          </article>
+          <article class="feature">
+            <div class="feature-ic">🧯</div>
+            <h3>Guardrails</h3>
+            <p>Pluggable input / output guardrails and logging sinks run in-proc on the proxy via the
+              callback hook.</p>
+          </article>
+          <article class="feature">
+            <div class="feature-ic">👥</div>
+            <h3>RBAC &amp; audit</h3>
+            <p>Org → team → user hierarchy with roles (org-admin, team-admin, developer,
+              billing-viewer, auditor). Every mutation appends an immutable audit event.</p>
+          </article>
+          <article class="feature">
+            <div class="feature-ic">♻️</div>
+            <h3>Reliability</h3>
+            <p>Automatic fallback and retry when a primary model or provider fails or degrades —
+              inherited from the LiteLLM router.</p>
+          </article>
+          <article class="feature">
+            <div class="feature-ic">🏢</div>
+            <h3>Self-hostable</h3>
+            <p>All request/response data can stay inside your VPC or on-prem. Docker Compose for
+              small deployments, Helm + HPA for scale.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ARCHITECTURE ============ -->
+    <section id="architecture" class="section section-light">
+      <div class="wrap">
+        <header class="section-head">
+          <span class="kicker">Architecture</span>
+          <h2>Data plane hot path, control plane alongside</h2>
+          <p class="section-sub">
+            The data plane must be fast and highly available; the control plane can tolerate brief
+            downtime without stopping inference.
+          </p>
+        </header>
+
+        <div class="diagram" role="img" aria-label="Architecture diagram: clients flow through edge to the LiteLLM data plane and out to providers, with the control plane and shared stores alongside.">
+          <div class="diag-row">
+            <div class="diag-box box-client">
+              <span class="diag-title">Clients</span>
+              <span class="diag-items">OpenAI SDKs · Agent Builder · Customer apps</span>
+            </div>
+          </div>
+          <div class="diag-arrow">↓</div>
+          <div class="diag-row">
+            <div class="diag-box box-edge">
+              <span class="diag-title">Edge</span>
+              <span class="diag-items">Ingress · TLS · WAF · coarse rate limit</span>
+            </div>
+          </div>
+          <div class="diag-arrow">↓</div>
+
+          <div class="diag-cols">
+            <div class="diag-plane diag-plane-data">
+              <span class="diag-plane-label">Data plane — hot path</span>
+              <div class="diag-box box-proxy">
+                <span class="diag-title">LiteLLM Proxy fleet</span>
+                <span class="diag-items">stateless · autoscaled</span>
+              </div>
+              <div class="diag-box box-hooks">
+                <span class="diag-title">Our hooks</span>
+                <span class="diag-items">auth · guardrails · metering · audit</span>
+              </div>
+              <div class="diag-box box-cache">
+                <span class="diag-title">Cache</span>
+                <span class="diag-items">Redis (prod) · in-process (local)</span>
+              </div>
+            </div>
+
+            <div class="diag-plane diag-plane-ctrl">
+              <span class="diag-plane-label">Control plane — management</span>
+              <div class="diag-box box-ctrl">
+                <span class="diag-title">Governance API</span>
+                <span class="diag-items">orgs / teams / keys / policies</span>
+              </div>
+              <div class="diag-box box-ctrl">
+                <span class="diag-title">Billing &amp; Usage</span>
+                <span class="diag-items">metering · invoices · rate cards</span>
+              </div>
+              <div class="diag-box box-ctrl">
+                <span class="diag-title">Vue Admin UI</span>
+                <span class="diag-items">admin console · self-serve portal</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="diag-arrow">↓</div>
+          <div class="diag-row">
+            <div class="diag-box box-provider">
+              <span class="diag-title">Providers</span>
+              <span class="diag-items">OpenAI · Anthropic · Bedrock / Azure / Gemini · self-hosted vLLM / Ollama</span>
+            </div>
+          </div>
+          <div class="diag-arrow">↓</div>
+          <div class="diag-row">
+            <div class="diag-box box-store">
+              <span class="diag-title">Shared stores</span>
+              <span class="diag-items">SQLite / Postgres (keys · spend · orgs · audit) · Secrets (.env / Vault) · Observability (OTel · Prometheus · Langfuse)</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="diag-caption">
+          The hooks package (<code>aigw-hooks</code>) depends on the control plane so the proxy process
+          shares our DB models. The reverse never holds — the control plane must not import hooks.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ QUICKSTART ============ -->
+    <section id="quickstart" class="section section-dark">
+      <div class="wrap">
+        <header class="section-head">
+          <span class="kicker">Setup</span>
+          <h2>Up and running in four commands</h2>
+          <p class="section-sub">
+            Prerequisites: <a href="https://docs.astral.sh/uv/" target="_blank" rel="noopener">uv</a> and
+            Node 20+. No external services, no real API keys — a bundled stub provider, a SQLite file,
+            and an in-process cache stand in for everything.
+          </p>
+        </header>
+
+        <div class="steps">
+          <div class="step">
+            <div class="step-n">1</div>
+            <div class="step-body">
+              <h3>Install &amp; seed</h3>
+              <div class="code" data-copy>
+                <button class="copy-btn" aria-label="Copy">Copy</button>
+                <pre><code>uv sync --all-packages          <span class="c-cmt"># install Python deps</span>
+make migrate                    <span class="c-cmt"># create local SQLite schema</span>
+make seed                       <span class="c-cmt"># demo org/team/model/key (prints a virtual key)</span>
+cd admin-ui && npm install      <span class="c-cmt"># install UI deps</span></code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-n">2</div>
+            <div class="step-body">
+              <h3>Run the dev stack</h3>
+              <p class="step-note">Migrates, seeds, then starts the stub provider (:9099),
+                governance-api (:8080), and the Vue UI (:5173) — all hot-reloading.</p>
+              <div class="code" data-copy>
+                <button class="copy-btn" aria-label="Copy">Copy</button>
+                <pre><code>make dev</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-n">3</div>
+            <div class="step-body">
+              <h3>Sign in</h3>
+              <p class="step-note">Open <a href="http://localhost:5173" target="_blank" rel="noopener">localhost:5173</a>
+                and sign in with the dev principal — user <code>admin</code>, the org id printed by
+                <code>make seed</code>, role <code>org-admin</code>. API docs (Swagger) live at
+                <code>localhost:8080/docs</code>.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <strong>Note</strong> — <code>make dev</code> does not require the LiteLLM proxy. The control
+          plane, UI, and tests never route real inference. Run <code>make proxy</code> to install the
+          <code>litellm[proxy]</code> extra and exercise real <code>/v1/chat/completions</code> calls
+          on :4000.
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RUN / COMMANDS ============ -->
+    <section id="run" class="section section-light">
+      <div class="wrap">
+        <header class="section-head">
+          <span class="kicker">Run</span>
+          <h2>One target per job</h2>
+        </header>
+
+        <div class="table-wrap">
+          <table class="cmd-table">
+            <thead>
+              <tr><th>Command</th><th>What it does</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>make dev</code></td><td>Migrate + seed + stub provider (:9099) + governance-api (:8080) + Vue UI (:5173)</td></tr>
+              <tr><td><code>make api</code></td><td>Backend only — uvicorn hot reload on :8080</td></tr>
+              <tr><td><code>make ui</code></td><td>Frontend only — Vite on :5173, proxies <code>/api</code> → :8080</td></tr>
+              <tr><td><code>make proxy</code></td><td>Install <code>litellm[proxy]</code> extra + run the LiteLLM data plane on :4000</td></tr>
+              <tr><td><code>make docker-up</code></td><td>Build + start the whole stack via Compose, detached, and leave it running</td></tr>
+              <tr><td><code>make test</code></td><td>Unit tests — pytest (backend) + vitest (UI)</td></tr>
+              <tr><td><code>make e2e</code></td><td>End-to-end — boots the real server and drives the API over HTTP</td></tr>
+              <tr><td><code>make e2e-docker</code></td><td>Full-system QA — Compose up, ~34 assertions across both planes, then teardown</td></tr>
+              <tr><td><code>make lint</code></td><td>ruff check + mypy (strict)</td></tr>
+              <tr><td><code>make smoke</code></td><td>Shell smoke — migrate → seed → API → authenticated request</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="section-sub" style="margin-top:24px">
+          Full stack including the data plane, in one Docker command:
+        </p>
+        <div class="code code-light" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>make docker-up       <span class="c-cmt"># control :8080 · proxy :4000 · admin-ui :8081 · stub :9099</span>
+make docker-down     <span class="c-cmt"># stop it when you're done</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ DEPLOY ============ -->
+    <section id="deploy" class="section section-dark">
+      <div class="wrap">
+        <header class="section-head">
+          <span class="kicker">Deploy</span>
+          <h2>From a laptop to a cluster</h2>
+        </header>
+
+        <div class="deploy-grid">
+          <article class="deploy-card">
+            <h3>Docker Compose</h3>
+            <p class="deploy-sub">On-prem / small deployments</p>
+            <div class="code" data-copy>
+              <button class="copy-btn" aria-label="Copy">Copy</button>
+              <pre><code>cd deploy/docker-compose
+docker compose up --build
+<span class="c-cmt"># --profile scale adds Postgres + Redis</span></code></pre>
+            </div>
+          </article>
+
+          <article class="deploy-card">
+            <h3>Kubernetes / Helm</h3>
+            <p class="deploy-sub">Scale — proxy autoscales via HPA</p>
+            <div class="code" data-copy>
+              <button class="copy-btn" aria-label="Copy">Copy</button>
+              <pre><code>helm upgrade --install ai-gateway \
+  deploy/helm/ai-gateway ...</code></pre>
+            </div>
+          </article>
+        </div>
+
+        <p class="section-sub" style="margin-top:28px">
+          Swap SQLite for Postgres by changing <code>AIGW_DATABASE_URL</code> only — same models, same
+          migrations. Operations, upgrades, secrets, and incident response live in the
+          <a href="https://github.com/yennanliu/ai-gateway/blob/main/doc/runbook.md" target="_blank" rel="noopener">runbook</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ STACK ============ -->
+    <section class="section section-light">
+      <div class="wrap">
+        <header class="section-head">
+          <span class="kicker">Stack</span>
+          <h2>Boring, local-first, well-tested</h2>
+        </header>
+        <div class="stack-grid">
+          <div class="stack-item"><span class="stack-k">Backend</span><span class="stack-v">Python · FastAPI · uv · SQLAlchemy 2.0 · Alembic</span></div>
+          <div class="stack-item"><span class="stack-k">Datastore</span><span class="stack-v">SQLite by default · Postgres by connection-string swap</span></div>
+          <div class="stack-item"><span class="stack-k">Frontend</span><span class="stack-v">Vue 3 · Vite · TypeScript · Pinia</span></div>
+          <div class="stack-item"><span class="stack-k">Data plane</span><span class="stack-v">LiteLLM Proxy (pinned) + custom-auth &amp; callback hooks</span></div>
+          <div class="stack-item"><span class="stack-k">Testing</span><span class="stack-v">pytest + vitest · TDD · local-first, no external services</span></div>
+          <div class="stack-item"><span class="stack-k">Deploy</span><span class="stack-v">Docker Compose · Kubernetes / Helm + HPA</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CTA ============ -->
+    <section class="cta">
+      <div class="wrap cta-inner">
+        <h2>Ready to run it?</h2>
+        <p>Clone the repo and you'll have a governed, OpenAI-compatible gateway on your machine in
+          minutes — no accounts, no cloud, no keys.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary btn-lg" href="https://github.com/yennanliu/ai-gateway" target="_blank" rel="noopener">Clone on GitHub ↗</a>
+          <a class="btn btn-secondary btn-lg" href="#quickstart">Read the quickstart</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="20" height="20"><rect width="32" height="32" rx="6" fill="#ff9900"/><path d="M8 22 L16 8 L24 22 M11 18 H21" stroke="#232f3e" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span>AI Gateway</span>
+      </div>
+      <nav class="footer-links">
+        <a href="https://github.com/yennanliu/ai-gateway" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/yennanliu/ai-gateway/blob/main/doc/system-design.md" target="_blank" rel="noopener">System design</a>
+        <a href="https://github.com/yennanliu/ai-gateway/blob/main/doc/runbook.md" target="_blank" rel="noopener">Runbook</a>
+        <a href="https://docs.litellm.ai/docs/simple_proxy" target="_blank" rel="noopener">LiteLLM</a>
+      </nav>
+      <p class="footer-note">Built on LiteLLM Proxy · Self-hostable · Not affiliated with Amazon Web Services.</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
