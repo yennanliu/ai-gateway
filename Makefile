@@ -1,7 +1,7 @@
 ALEMBIC = uv run alembic -c control-plane/governance-api/alembic.ini
 UI_DIR = admin-ui
 
-.PHONY: help install dev api ui proxy test test-py test-ui e2e e2e-docker e2e-docker-smoke docker-up docker-down docker-logs docker-ps smoke lint format migrate revision seed openapi clean
+.PHONY: help install dev api ui proxy test test-py test-ui e2e e2e-docker e2e-docker-smoke docker-up docker-down docker-logs docker-ps docker-litellm-ui smoke lint format migrate revision seed openapi clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -51,6 +51,14 @@ docker-logs: ## Tail logs from the running Docker stack (Ctrl-C to stop tailing)
 
 docker-ps: ## Show container status of the running Docker stack
 	docker compose -f deploy/docker-compose/docker-compose.yml ps
+
+docker-litellm-ui: ## DEV ONLY: run LiteLLM's own Admin UI on :4001 (separate dev instance, hardcoded master key)
+	docker compose -f deploy/docker-compose/docker-compose.yml --profile litellm-ui up -d litellm-ui
+	@echo ""
+	@echo "LiteLLM Admin UI (dev):  http://localhost:4001/ui"
+	@echo "  login  ->  username: admin   password: admin   (or master key: sk-ag-dev-master)"
+	@echo "  NOTE: this is LiteLLM's OWN key store -- it does NOT show our sk-ag virtual keys."
+	@echo "  Stop it with: make docker-down"
 
 smoke: ## Run the shell smoke script (migrate -> seed -> API -> request)
 	./scripts/smoke.sh

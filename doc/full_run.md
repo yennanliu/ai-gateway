@@ -176,12 +176,37 @@ and spend, not LiteLLM's Prisma/Postgres key store.** Standing up a Postgres
 instance just to unlock `/ui` would reintroduce a second, parallel key/session
 store that the rest of the system doesn't know about.
 
-So there's no username/password to give you here — the Admin UI is
-intentionally left unconfigured. Manage everything (orgs, teams, keys, models,
-budgets) through our own control plane instead:
+So the **primary** proxy (`:4000`) has no master key and no LiteLLM UI login —
+that's deliberate. Manage everything (orgs, teams, keys, models, budgets) through
+our own control plane instead:
 
-- **Our admin-ui** (`make ui`, or `admin-ui` in docker compose) — the real UI for this product.
+- **Our admin-ui** (`make ui`, or `admin-ui` in docker compose, `:8081`) — the real UI for this product.
 - **Swagger** at `http://localhost:8080/docs` — try any control-plane endpoint directly.
+
+### Want to poke at LiteLLM's `/ui` anyway? (dev only)
+
+There's an opt-in, **fully isolated** dev instance for local exploration — a
+*second* LiteLLM proxy on `:4001` with a hardcoded dev master key and its own
+throwaway Postgres. It does not touch the default stack, the compiled config, or
+our control-plane DB (it uses LiteLLM's own key store, so it will **not** show
+your `sk-ag-…` virtual keys — it's purely for seeing the UI):
+
+```bash
+make docker-litellm-ui        # starts it (profile "litellm-ui"); make docker-down stops it
+```
+
+Then open **http://localhost:4001/ui** and log in with:
+
+| Field | Value |
+|---|---|
+| Username | `admin` |
+| Password | `admin` |
+| (or) Master key | `sk-ag-dev-master` |
+
+Config lives in `deploy/docker-compose/litellm-ui.config.yaml`; the master key
+and Postgres are wired in the `litellm-ui` / `litellm-db` services (profile
+`litellm-ui`) in `docker-compose.yml`. This is dev-only — never ship a hardcoded
+master key.
 
 ## Troubleshooting
 
