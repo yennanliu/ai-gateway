@@ -51,6 +51,18 @@ jobs:
       - name: Model/migration drift guard
         run: uv run alembic -c control-plane/governance-api/alembic.ini check
 
+  integration:
+    name: Integration (control plane ↔ data plane)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-packages
+      - name: Gateway integration tests (auth + enforcement + metering + routing)
+        run: uv run pytest tests/integration -v
+
   e2e:
     name: E2E (real server over HTTP)
     runs-on: ubuntu-latest

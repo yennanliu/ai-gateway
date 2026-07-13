@@ -9,14 +9,14 @@ with no external services (SQLite, in-process cache, bundled stub provider).
 |---|---|---|
 | Unit + API (in-process) | `make test-py` / `uv run pytest` | Domain logic + FastAPI routes on in-memory SQLite (fast) |
 | UI | `make test-ui` / `cd admin-ui && npm run test:unit` | Vue stores, client, components (vitest) |
-| Integration (LiteLLM) | `uv run pytest tests/integration` | Real `litellm.Router` routing + fallback vs a stub provider |
+| Integration (control ↔ data plane) | `uv run pytest tests/integration` | Real `litellm.Router` routing + fallback vs a stub, **and** the four gateway seams wired against a seeded DB: custom-auth (valid/unknown/revoked/expired/model-scope), pre-call enforcement (over-budget 402, rate-limit 429, injection 400, PII redaction), success-event metering + budget updates, and a full auth→enforce→route→meter lifecycle |
 | **E2E (real server)** | `make e2e` / `uv run pytest tests/e2e` | Boots uvicorn as a subprocess, drives the full governance lifecycle over HTTP |
 | **Full system QA (docker compose)** | `make e2e-docker` / `./scripts/e2e_docker_qa.sh` | Real LiteLLM proxy + control plane + stub provider in containers; ~34 assertions across both planes (health/version, auth 401, RBAC 403, model registry, teams, usage/billing, real chat completions, `/v1/models`, and the issue→use→revoke→reject key lifecycle) |
 | Full system smoke (docker compose) | `make e2e-docker-smoke` / `./scripts/e2e_docker.sh` | Fast variant: a real `/v1/chat/completions` through custom-auth + routing, plus a 401 for an unknown key |
 | Smoke (shell) | `make smoke` / `./scripts/smoke.sh` | Clean DB → migrate → seed → API → authenticated request |
 | Lint / types | `make lint` | ruff + mypy (strict) |
 
-`make test` runs unit + UI. `make e2e` and `make e2e-docker` are separate (they start real processes/containers, so they're slower). CI runs all of them (`backend`, `migrations-postgres`, `e2e`, `full-system`, `ui` jobs).
+`make test` runs unit + UI. `make e2e` and `make e2e-docker` are separate (they start real processes/containers, so they're slower). CI runs all of them (`backend`, `migrations-postgres`, `integration`, `e2e`, `full-system`, `ui` jobs).
 
 ## 2. Interactive API docs (Swagger / OpenAPI)
 
