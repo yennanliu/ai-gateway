@@ -1,0 +1,22 @@
+# DEV-ONLY LiteLLM config that ENABLES LiteLLM's built-in Admin UI (/ui).
+#
+# This is deliberately SEPARATE from the compiled production config
+# (services/config_compiler.py), which authenticates via our custom-auth hook and
+# never sets a master key. LiteLLM's Admin UI requires a master key AND LiteLLM's
+# own database, so this dev instance keeps a throwaway LiteLLM key store in its
+# own Postgres. It does NOT share our virtual keys or spend -- it exists only so
+# you can log into and explore the LiteLLM UI locally. See doc/full_run.md.
+model_list:
+  - model_name: demo-gpt
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/STUB_KEY
+      api_base: http://stub-provider:9099
+
+general_settings:
+  # The Admin UI login credential. Injected from LITELLM_MASTER_KEY (hardcoded
+  # dev value in docker-compose.yml) -- never use a real key here.
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+litellm_settings:
+  drop_params: true

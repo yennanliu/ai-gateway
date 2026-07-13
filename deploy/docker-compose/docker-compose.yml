@@ -92,6 +92,50 @@ services:
     ports:
       - "8081:80"
 
+  # --- DEV ONLY: LiteLLM's built-in Admin UI on :4001 (profile "litellm-ui") ---
+  # Enable with `make docker-litellm-ui` (or `docker compose --profile litellm-ui
+  # up -d --build litellm-ui`). This runs a SECOND LiteLLM proxy with a hardcoded
+  # dev master key and its own throwaway Postgres (LiteLLM's /ui needs a DB). It
+  # does not touch the default stack, the compiled config, or our control-plane
+  # DB -- it's isolated for local UI exploration only. Log in at
+  # http://localhost:4001/ui  (username: admin / password: admin, or the master key).
+  litellm-db:
+    image: postgres:16
+    profiles: ["litellm-ui"]
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm
+      POSTGRES_DB: litellm
+    volumes:
+      - litellm-ui-pg:/var/lib/postgresql/data
+
+  litellm-ui:
+    # Official LiteLLM image (ships prisma + the Admin UI). We do NOT reuse our
+    # data-plane image here on purpose: it installs litellm[proxy] without prisma,
+    # because the production data plane authenticates via our custom-auth hook and
+    # never touches LiteLLM's DB. This dev instance is the opposite case.
+    image: ghcr.io/berriai/litellm-database:main-stable
+    profiles: ["litellm-ui"]
+    command: ["--config", "/app/config.yaml", "--port", "4001"]
+    volumes:
+      - ./litellm-ui.config.yaml:/app/config.yaml:ro
+    environment:
+      # DEV-ONLY hardcoded master key = the Admin UI login credential. Not for prod.
+      LITELLM_MASTER_KEY: sk-ag-dev-master
+      DATABASE_URL: postgresql://litellm:litellm@litellm-db:5432/litellm
+      STORE_MODEL_IN_DB: "True"
+      UI_USERNAME: admin
+      UI_PASSWORD: admin
+      # Dev stand-in credential for the stub upstream; the stub ignores it.
+      STUB_KEY: sk-stub-docker
+    depends_on:
+      litellm-db:
+        condition: service_started
+      stub-provider:
+        condition: service_started
+    ports:
+      - "4001:4001"
+
   postgres:
     image: postgres:16
     profiles: ["scale"]
@@ -113,3 +157,4 @@ services:
 volumes:
   aigw-data:
   aigw-pg:
+  litellm-ui-pg:
