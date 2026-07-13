@@ -75,7 +75,12 @@
 
     <!-- ============ SIDEBAR TOC ============ -->
     <aside class="guide-toc">
-      <div class="guide-toc-title" data-i18n="g.toc.gettingstarted">Getting started</div>
+      <div class="guide-toc-title" data-i18n="g.toc.architecture">Architecture</div>
+      <ol>
+        <li><a href="#architecture" data-i18n="g.toc.arch-built">How it's built</a></li>
+        <li><a href="#request-path" data-i18n="g.toc.arch-request">Anatomy of a request</a></li>
+      </ol>
+      <div class="guide-toc-title" style="margin-top:22px" data-i18n="g.toc.gettingstarted">Getting started</div>
       <ol>
         <li><a href="#start" data-i18n="g.toc.start">Start the gateway</a></li>
         <li><a href="#signin" data-i18n="g.toc.signin">Sign in to the console</a></li>
@@ -102,6 +107,12 @@
         <li><a href="#enforce" data-i18n="g.toc.enforce">Budgets &amp; rate limits</a></li>
         <li><a href="#streaming" data-i18n="g.toc.streaming">Stream with metering</a></li>
       </ol>
+      <div class="guide-toc-title" style="margin-top:22px" data-i18n="g.toc.operate">Operate it</div>
+      <ol start="19">
+        <li><a href="#compile" data-i18n="g.toc.compile">Inspect the compiled config</a></li>
+        <li><a href="#pricing" data-i18n="g.toc.pricing">Price calls with a rate card</a></li>
+        <li><a href="#export" data-i18n="g.toc.export">Export usage for billing</a></li>
+      </ol>
     </aside>
 
     <!-- ============ CONTENT ============ -->
@@ -111,6 +122,130 @@
         pre-seeded with demo data and a fake upstream provider — so every step below is real, with
         <strong>no cloud account and no provider API key</strong>. You only need Docker installed.
       </p>
+
+      <!-- ===== ARCHITECTURE ===== -->
+      <section class="step-block" id="architecture">
+        <div class="step-head"><span class="step-icon" aria-hidden="true">🧭</span><h2 data-i18n="g.arch.h2">How it's built</h2></div>
+        <p data-i18n="g.arch.p1">Before the steps, a one-minute mental model. The gateway is a deliberate <strong>two-plane split</strong>.
+          The <strong>data plane</strong> is <strong>LiteLLM Proxy</strong>, consumed as a pinned dependency — it owns the
+          fast, OpenAI-compatible request path and all the provider adapters. The <strong>control plane</strong> is our own
+          FastAPI service plus a Vue console — orgs, teams, users, keys, the model registry, budgets, usage, and audit.
+          That is the product.</p>
+
+        <div class="diagram" role="img" aria-label="Two-plane architecture: clients call the LiteLLM data plane, which authenticates and meters against the control plane; both share one database.">
+          <div class="diag-row">
+            <div class="diag-box box-client">
+              <span class="diag-title" data-i18n="g.arch.d.clients.t">Clients</span>
+              <span class="diag-items">OpenAI SDKs · agent frameworks · your apps</span>
+            </div>
+          </div>
+          <div class="diag-arrow">↓</div>
+          <div class="diag-cols">
+            <div class="diag-plane diag-plane-data">
+              <span class="diag-plane-label" data-i18n="g.arch.d.data.label">Data plane — hot path (LiteLLM)</span>
+              <div class="diag-box box-proxy">
+                <span class="diag-title" data-i18n="g.arch.d.proxy.t">LiteLLM Proxy :4000</span>
+                <span class="diag-items" data-i18n="g.arch.d.proxy.i">OpenAI-compatible <code>/v1/*</code> · routing · fallback</span>
+              </div>
+              <div class="diag-box box-hooks">
+                <span class="diag-title" data-i18n="g.arch.d.hooks.t">Our hooks (aigw-hooks)</span>
+                <span class="diag-items" data-i18n="g.arch.d.hooks.i">auth · guardrails · metering · audit</span>
+              </div>
+            </div>
+            <div class="diag-plane diag-plane-ctrl">
+              <span class="diag-plane-label" data-i18n="g.arch.d.ctrl.label">Control plane — the product</span>
+              <div class="diag-box box-ctrl">
+                <span class="diag-title" data-i18n="g.arch.d.gov.t">Governance API :8080</span>
+                <span class="diag-items" data-i18n="g.arch.d.gov.i">orgs / teams / users / keys / models / budgets</span>
+              </div>
+              <div class="diag-box box-ctrl">
+                <span class="diag-title" data-i18n="g.arch.d.ui.t">Vue console :8081</span>
+                <span class="diag-items" data-i18n="g.arch.d.ui.i">admin + self-serve · usage · audit</span>
+              </div>
+            </div>
+          </div>
+          <div class="diag-arrow">↓</div>
+          <div class="diag-row">
+            <div class="diag-box box-store">
+              <span class="diag-title" data-i18n="g.arch.d.db.t">One database — the source of truth</span>
+              <span class="diag-items">SQLite by default · Postgres by changing one env var (keys · spend · orgs · audit)</span>
+            </div>
+          </div>
+          <div class="diag-arrow">↓</div>
+          <div class="diag-row">
+            <div class="diag-box box-provider">
+              <span class="diag-title" data-i18n="g.arch.d.prov.t">Providers</span>
+              <span class="diag-items">OpenAI · Anthropic · Gemini · Bedrock / Azure · self-hosted — or the offline stub</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hint">
+          <span class="hint-ic">🔑</span>
+          <p data-i18n="g.arch.invariant">The one invariant that makes everything else work: <strong>our database is the source of truth
+            for keys and spend</strong>, not LiteLLM's own key store. The proxy authenticates every request by calling
+            <em>back</em> into our DB through the hooks — which is why a revoke (step 14) takes effect on the very next call.</p>
+        </div>
+      </section>
+
+      <!-- ===== REQUEST PATH ===== -->
+      <section class="step-block" id="request-path">
+        <div class="step-head"><span class="step-icon" aria-hidden="true">➡️</span><h2 data-i18n="g.reqpath.h2">Anatomy of a governed request</h2></div>
+        <p data-i18n="g.reqpath.p1">Everything the later steps demonstrate happens on a single request path. A call enters the proxy, our
+          hooks run governance <strong>before</strong> it reaches any provider, and meter it <strong>after</strong> — so
+          nothing is billed for a request that was blocked, and nothing that succeeds goes uncounted.</p>
+
+        <div class="diagram" role="img" aria-label="Request lifecycle: app to proxy, pre-call hooks for auth, guardrails and limits, then provider, then post-call metering write-back, then response.">
+          <div class="diag-row">
+            <div class="diag-box box-client">
+              <span class="diag-title" data-i18n="g.reqpath.d.app.t">Your app</span>
+              <span class="diag-items">POST /v1/chat/completions · Bearer sk-ag-…</span>
+            </div>
+          </div>
+          <div class="diag-arrow">↓</div>
+          <div class="diag-row">
+            <div class="diag-box box-proxy">
+              <span class="diag-title" data-i18n="g.reqpath.d.proxy.t">LiteLLM proxy :4000</span>
+              <span class="diag-items" data-i18n="g.reqpath.d.proxy.i">receives the OpenAI-shaped request</span>
+            </div>
+          </div>
+          <div class="diag-arrow">↓</div>
+          <div class="diag-row">
+            <div class="diag-box box-hooks">
+              <span class="diag-title" data-i18n="g.reqpath.d.pre.t">Our hooks — before the call</span>
+              <span class="diag-items" data-i18n="g.reqpath.d.pre.i">① authenticate the key against our DB · ② redact PII / block injection · ③ check budget &amp; rate limit</span>
+            </div>
+          </div>
+          <div class="diag-arrow" data-i18n="g.reqpath.d.gate">↓ &nbsp; only if every check passes (else 401 / 400 / 402 / 429)</div>
+          <div class="diag-row">
+            <div class="diag-box box-provider">
+              <span class="diag-title" data-i18n="g.reqpath.d.prov.t">Provider adapter → upstream</span>
+              <span class="diag-items" data-i18n="g.reqpath.d.prov.i">real provider, or the offline stub in this walkthrough</span>
+            </div>
+          </div>
+          <div class="diag-arrow">↓</div>
+          <div class="diag-row">
+            <div class="diag-box box-hooks">
+              <span class="diag-title" data-i18n="g.reqpath.d.post.t">Our hooks — after the call</span>
+              <span class="diag-items" data-i18n="g.reqpath.d.post.i">meter tokens → price on the rate card → write spend back to our DB</span>
+            </div>
+          </div>
+          <div class="diag-arrow">↓</div>
+          <div class="diag-row">
+            <div class="diag-box box-client">
+              <span class="diag-title" data-i18n="g.reqpath.d.resp.t">Response</span>
+              <span class="diag-items" data-i18n="g.reqpath.d.resp.i">a standard chat.completion — already metered and attributed</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hint">
+          <span class="hint-ic">🗺️</span>
+          <p data-i18n="g.reqpath.map">Keep this picture in mind: the <strong>getting-started</strong> steps walk the console top to bottom,
+            <strong>Part 3</strong> exercises each pre-call gate on its own, and <strong>Part 4</strong> shows the config
+            and pricing that feed it.</p>
+        </div>
+      </section>
 
       <!-- 1 -->
       <section class="step-block" id="start">
@@ -564,9 +699,115 @@ data: [DONE]</code></pre>
         </div>
         <p data-i18n="g.step18.p2">Streaming works for all three families — the stub replies in each provider's native SSE format — and
           the <strong>Usage</strong> page climbs after a streamed call just as it does for a buffered one.</p>
+      </section>
+
+      <!-- ===== PART 4: operate it ===== -->
+      <div class="guide-part">
+        <span class="guide-part-kicker" data-i18n="g.part4.kicker">Part 4</span>
+        <h2 data-i18n="g.part4.h2">Operate it</h2>
+        <p data-i18n="g.part4.p">The plumbing behind the request path from the architecture section: the LiteLLM config is a
+          <em>derived</em> artifact compiled from the registry, cost comes from a rate card you own, and every
+          metered call can be exported for billing. All three are plain control-plane API calls.</p>
+      </div>
+
+      <!-- 19 -->
+      <section class="step-block" id="compile">
+        <div class="step-head"><span class="step-num">19</span><h2 data-i18n="g.step19.h2">Inspect the compiled config</h2></div>
+        <p data-i18n="g.step19.p1">You never hand-write the proxy's YAML. The <strong>registry is the source of truth</strong> and the
+          LiteLLM config is compiled from it on demand. Ask the control plane to compile your org's config and it
+          returns exactly what the data plane runs:</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>curl -s -X POST <span class="c-str">http://localhost:8080/api/v1/config/compile</span> \
+  -H <span class="c-str">"X-User-Id: admin"</span> -H <span class="c-str">"X-Org-Id: $ORG_ID"</span> -H <span class="c-str">"X-Org-Roles: org-admin"</span></code></pre>
+        </div>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>{
+  "model_list": [
+    { "model_name": "demo-gpt",
+      "litellm_params": {
+        "model": "openai/gpt-4o-mini",
+        "api_key": "os.environ/STUB_KEY",        <span class="c-cmt"># a reference — never the secret itself</span>
+        "api_base": "http://localhost:9099"
+      },
+      "model_info": { "id": "md_…", "tags": [] } },
+    { "model_name": "demo-claude",
+      "litellm_params": { "model": "anthropic/claude-sonnet-5",
+        "api_key": "os.environ/STUB_KEY", "api_base": "http://localhost:9099" },
+      "model_info": { "id": "md_…", "tags": ["long-context", "vision"] } }
+  ],
+  "router_settings": {
+    "routing_strategy": "simple-shuffle", "num_retries": 2,
+    "fallbacks": [ { "demo-gpt-4o": ["demo-gpt"] } ]   <span class="c-cmt"># premium falls back to the cheap model</span>
+  },
+  "litellm_settings": { "callbacks": ["hooks.callbacks.aigw_logger"] },
+  "general_settings": { "custom_auth": "hooks.auth.user_api_key_auth" }
+}</code></pre>
+        </div>
+        <div class="hint">
+          <span class="hint-ic">⚙️</span>
+          <p data-i18n="g.step19.hint">Two lines do the heavy lifting: <code>custom_auth</code> points every request back at our key check,
+            and the <code>callbacks</code> logger runs metering — the seams that keep <strong>our DB the source of truth</strong>.
+            Credentials are only <code>os.environ/…</code> references, so the written YAML is safe to commit.</p>
+        </div>
+      </section>
+
+      <!-- 20 -->
+      <section class="step-block" id="pricing">
+        <div class="step-head"><span class="step-num">20</span><h2 data-i18n="g.step20.h2">Price calls with a rate card</h2></div>
+        <p data-i18n="g.step20.p1">The cost you saw on the Usage page (step 8) and in the group-by-key query (step 13) comes from the
+          org's <strong>rate card</strong> for each model. Set or update a price per <code>1k_tokens</code>, with an
+          optional percentage markup on top of raw provider cost:</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>curl -s -X PUT <span class="c-str">http://localhost:8080/api/v1/rate-cards</span> \
+  -H <span class="c-str">"X-User-Id: admin"</span> -H <span class="c-str">"X-Org-Id: $ORG_ID"</span> -H <span class="c-str">"X-Org-Roles: org-admin"</span> \
+  -H <span class="c-str">"Content-Type: application/json"</span> \
+  -d <span class="c-str">'{"model":"demo-gpt","unit":"1k_tokens","price":0.5,"markup_pct":15}'</span>
+
+<span class="c-cmt"># → { "model":"demo-gpt", "unit":"1k_tokens", "price":"0.5", "markup_pct":"15" }</span></code></pre>
+        </div>
+        <p data-i18n="g.step20.p2">List every card the org has, to see how each model is priced:</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>curl -s <span class="c-str">http://localhost:8080/api/v1/rate-cards</span> \
+  -H <span class="c-str">"X-User-Id: admin"</span> -H <span class="c-str">"X-Org-Id: $ORG_ID"</span> -H <span class="c-str">"X-Org-Roles: org-admin"</span></code></pre>
+        </div>
+        <div class="hint">
+          <span class="hint-ic">🧾</span>
+          <p data-i18n="g.step20.hint">Metering and pricing are separate concerns: a call with <strong>no rate card</strong> is still
+            counted (tokens and requests), just at zero cost. Add the card later and future calls price immediately —
+            no gateway restart.</p>
+        </div>
+      </section>
+
+      <!-- 21 -->
+      <section class="step-block" id="export">
+        <div class="step-head"><span class="step-num">21</span><h2 data-i18n="g.step21.h2">Export usage for billing</h2></div>
+        <p data-i18n="g.step21.p1">The same metered data behind the Usage page is available as CSV for invoicing or a spreadsheet.
+          Group it by <code>team</code>, <code>model</code>, <code>key</code>, or <code>day</code> — here, by team:</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>curl -s <span class="c-str">"http://localhost:8080/api/v1/exports/usage.csv?group_by=team"</span> \
+  -H <span class="c-str">"X-User-Id: admin"</span> -H <span class="c-str">"X-Org-Id: $ORG_ID"</span> -H <span class="c-str">"X-Org-Roles: org-admin"</span></code></pre>
+        </div>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>group,prompt_tokens,completion_tokens,cost,requests
+team_platform,18240,15980,17.11,412
+team_research,9120,8010,8.55,206
+team_support,3040,2670,2.85,68</code></pre>
+        </div>
+        <div class="hint">
+          <span class="hint-ic">📊</span>
+          <p data-i18n="g.step21.hint">Prefer JSON? The same numbers come from <code>GET /api/v1/usage?group_by=team</code>, and
+            month-close invoices from <code>GET /api/v1/invoices</code> — all read-only, so a
+            <code>billing-viewer</code> can pull them without any write access.</p>
+        </div>
 
         <div class="guide-next">
-          <a class="btn btn-secondary" href="index.html#architecture" data-i18n="g.next.architecture">How it works — architecture</a>
+          <a class="btn btn-secondary" href="#architecture" data-i18n="g.next.architecture">Back to the architecture</a>
           <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway/blob/main/doc/system-design.md" target="_blank" rel="noopener" data-i18n="g.next.sysdesign">System design ↗</a>
           <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway/blob/main/doc/runbook.md" target="_blank" rel="noopener" data-i18n="g.next.runbook">Runbook ↗</a>
         </div>
