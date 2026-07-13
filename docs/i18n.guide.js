@@ -1,0 +1,142 @@
+window.I18N_ZH = {
+  "__title": "指南 — AI Gateway",
+  "__desc": "一份實作導向、逐步操作的 AI Gateway 執行指南：啟動整套服務、登入、註冊模型、簽發虛擬金鑰、送出你的第一個請求，並追蹤用量與預算。",
+
+  "g.nav.overview": "概覽",
+  "g.nav.features": "功能特色",
+  "g.nav.architecture": "架構",
+  "g.nav.guide": "指南",
+
+  "g.action.github": "GitHub ↗",
+  "g.action.start": "開始",
+
+  "g.header.eyebrow": "指南",
+  "g.header.h1": "端到端執行閘道器",
+  "g.header.p": "啟動整套服務、登入管理主控台、註冊模型、簽發虛擬金鑰，並送出你的第一個受治理的請求 — 接著即時觀察 token、花費與預算的更新。",
+
+  "g.toc.gettingstarted": "開始上手",
+  "g.toc.start": "啟動閘道器",
+  "g.toc.signin": "登入管理主控台",
+  "g.toc.dashboard": "讀懂儀表板",
+  "g.toc.models": "註冊模型",
+  "g.toc.teams": "建立團隊",
+  "g.toc.keys": "簽發虛擬金鑰",
+  "g.toc.request": "送出第一個請求",
+  "g.toc.usage": "追蹤用量與花費",
+  "g.toc.budgets": "設定預算",
+  "g.toc.api": "直接使用 API",
+  "g.toc.lifecycle": "金鑰的生命週期",
+  "g.toc.life-issue": "從 API 簽發金鑰",
+  "g.toc.life-sdk": "從你的應用程式呼叫",
+  "g.toc.life-monitor": "觀察用量攀升",
+  "g.toc.life-revoke": "關閉金鑰",
+  "g.toc.governance": "治理實戰",
+  "g.toc.providers": "路由任何供應商",
+  "g.toc.guardrails": "會採取行動的防護機制",
+  "g.toc.enforce": "預算與速率限制",
+  "g.toc.streaming": "帶計量的串流",
+
+  "g.intro": "本教學使用<strong>單一指令的 Docker 服務堆疊</strong>，它會啟動整套閘道器，並預先載入示範資料與一個假的上游供應商 — 因此以下每個步驟都是真實可執行的，<strong>不需要雲端帳號，也不需要供應商 API 金鑰</strong>。你只需要安裝 Docker。",
+
+  "g.step1.h2": "啟動閘道器",
+  "g.step1.p1": "在儲存庫的根目錄下，用 Docker 啟動整套服務並讓它持續執行：",
+  "g.step1.p2": "這會建置並啟動四項服務，同時載入一個示範組織：",
+  "g.step1.li1": "<strong>控制平面</strong>（governance API）— <code>http://localhost:8080</code>",
+  "g.step1.li2": "<strong>LiteLLM proxy</strong>（OpenAI 相容端點）— <code>http://localhost:4000</code>",
+  "g.step1.li3": "<strong>管理主控台</strong> — <code>http://localhost:8081</code>",
+  "g.step1.li4": "<strong>Stub 供應商</strong>（假的上游，因此請求不需要真實金鑰）— <code>http://localhost:9099</code>",
+  "g.step1.p3": "完成後，它會印出載入的<strong>組織 id</strong>與一組可直接使用的<strong>虛擬金鑰</strong> — 請把兩者都留在手邊：",
+  "g.step1.hint": "你的 <code>org</code> id 與金鑰會和上面的範例不同 — 請複製你自己這次執行所印出的值。之後可用 <code>make docker-down</code> 停止所有服務。",
+
+  "g.step2.h2": "登入管理主控台",
+  "g.step2.p1": "開啟 <a href=\"http://localhost:8081\" target=\"_blank\" rel=\"noopener\"><code>http://localhost:8081</code></a>。在 SSO 上線之前，驗證機制只是一個開發用的替代方案，因此你是以身分而非密碼登入：輸入使用者 id <code>admin</code>，貼上步驟 1 的<strong>組織 id</strong>，保留角色 <code>org-admin</code>，然後選擇<strong>進入主控台</strong>。",
+  "g.step2.cap": "主控台登入 — 使用者 id、組織 id 與角色。",
+  "g.step2.hint": "<strong>org-admin</strong> 是最高階角色：org-admin 在整個組織中擁有每一項團隊層級的權限。",
+
+  "g.step3.h2": "讀懂儀表板",
+  "g.step3.p1": "儀表板是你組織的一目了然總覽：控制平面的健康狀態、目前為止的花費、總請求數，以及有多少預算正逼近上限。在全新載入的資料上，你就已經能看到來自示範資料的活動。",
+  "g.step3.cap": "儀表板 — 健康狀態、花費、請求與預算警示。",
+
+  "g.step4.h2": "註冊模型",
+  "g.step4.p1": "<strong>模型註冊表</strong>是呼叫端可使用哪些模型的真實來源。每一筆項目會將一個易記的<strong>公開名稱</strong>（用戶端請求時使用的名稱）對應到一個<strong>供應商</strong>與真正的上游<strong>模型</strong>。你可以用表單新增一筆，或從三個已載入的示範模型開始。",
+  "g.step4.cap": "模型註冊表 — 公開名稱 → 供應商 → 上游模型。",
+  "g.step4.hint": "註冊表是真實來源；LiteLLM proxy 設定檔則是由它編譯而來的<strong>衍生產物</strong>，憑證會以環境變數參照形式輸出 — 絕不會是明文。",
+
+  "g.step5.h2": "建立團隊",
+  "g.step5.p1": "一切都以 <code>org › team › user › app</code> 進行範圍劃分。團隊是你用來分組人員並歸屬花費的方式。載入資料內建三個團隊 — Platform、Research 與 Support — 你也可以從<strong>團隊</strong>頁面新增更多。",
+  "g.step5.cap": "團隊 — 分組與花費歸屬的單位。",
+
+  "g.step6.h2": "簽發虛擬金鑰",
+  "g.step6.p1": "使用方永遠不會接觸到你的供應商金鑰 — 他們拿到的是一組有範圍限制的<strong>虛擬金鑰</strong>。選擇一個團隊，點選<strong>簽發金鑰</strong>，完整的金鑰只會<strong>顯示一次</strong>。之後系統只會儲存一段顯示用的前綴與一個雜湊值，而你可以隨時<strong>撤銷</strong>金鑰。",
+  "g.step6.cap": "虛擬金鑰 — 依團隊簽發；只儲存前綴與雜湊值。",
+
+  "g.step7.h2": "送出第一個請求",
+  "g.step7.p1": "將任何 OpenAI 相容的用戶端指向 <code>4000</code> 連接埠上的 proxy，並以你的虛擬金鑰進行驗證。傳輸格式與 OpenAI 完全相同 — 只有 base URL 與金鑰改變：",
+  "g.step7.p2": "你會拿回一個標準的 chat-completion — 這裡由 stub 上游提供 — 其中的 token 數量會被閘道器用來計量並計價這次呼叫：",
+  "g.step7.hint": "錯誤或已撤銷的金鑰會在抵達供應商之前就被拒絕 — proxy 會回呼控制平面資料庫來驗證每個請求，並回傳 <code>401 invalid API key</code>。",
+
+  "g.step8.h2": "追蹤用量與花費",
+  "g.step8.p1": "你剛剛送出的每個請求都會被計量、計價並歸屬。<strong>用量</strong>頁面會依模型拆解花費 — prompt 與 completion token、花費以及請求數 — 相同的資料也可以依團隊或依日期分組，供帳單與 CSV 匯出使用。",
+  "g.step8.cap": "用量 — 各模型的 token、花費與請求數。",
+
+  "g.step9.h2": "設定預算",
+  "g.step9.p1": "在任何範圍層級掛上花費<strong>上限</strong> — key、app、user、team 或 org。預算採<strong>最明確者優先</strong>的方式解析（<code>key › app › user › team › org</code>），主控台會在任何預算超支之前，標示出跨越警示門檻的項目。",
+  "g.step9.cap": "預算 — 各範圍的上限，並附超過門檻的警示。",
+
+  "g.step10.h2": "直接使用 API",
+  "g.step10.p1": "主控台所做的一切都是控制平面的 REST API — 組織、團隊、金鑰、模型、預算與用量。你可以在 <a href=\"http://localhost:8080/docs\" target=\"_blank\" rel=\"noopener\"><code>http://localhost:8080/docs</code></a> 的 Swagger UI 中互動式地探索與試用。以與主控台相同的方式驗證，使用 <code>X-User-Id</code>、<code>X-Org-Id</code> 與 <code>X-Org-Roles</code> 標頭。",
+  "g.step10.cap": "Swagger UI 中的 Governance API（<code>/docs</code>）。",
+  "g.step10.p2": "快速檢查健康狀態／版本完全不需要主控台：",
+
+  "g.part2.kicker": "第 2 部分",
+  "g.part2.h2": "虛擬金鑰的生命週期",
+  "g.part2.p": "同樣的流程從頭到尾，改由 API 驅動：鑄造一把金鑰、從你自己的應用程式使用它、觀察它產生的花費，接著把它關閉並確認它停止運作 — 在你撤銷的那一刻，資料平面就會拒絕它，因為控制平面資料庫是唯一的真實來源。",
+
+  "g.step11.h2": "從 API 簽發金鑰",
+  "g.step11.p1": "建立一把限定於某個團隊的金鑰（並可選擇性地限制在特定模型）。完整的金鑰只會在 <code>key</code> 欄位中回傳<strong>一次</strong> — 請現在就儲存起來；之後只會保留 <code>prefix</code> 與一個雜湊值。",
+  "g.step11.hint": "需要 team id 嗎？<code>GET /api/v1/teams?org_id=$ORG_ID</code> 會列出所有團隊，或者你也可以從<strong>團隊</strong>頁面（步驟 5）讀到它。",
+
+  "g.step12.h2": "從你的應用程式呼叫",
+  "g.step12.p1": "由於 proxy 是 OpenAI 相容的，你不需要新的 SDK — 只要把官方 OpenAI 用戶端指向閘道器並傳入虛擬金鑰即可。你程式碼中的其他部分都不需要改動。",
+  "g.step12.p2": "<strong>Python</strong>",
+  "g.step12.p3": "<strong>JavaScript / TypeScript</strong>",
+
+  "g.step13.h2": "觀察用量攀升",
+  "g.step13.p1": "每一次成功的呼叫都會被計量、計價並歸屬到發出呼叫的金鑰 — 你可以看到數字變動。在送出幾個請求前後，請 usage 端點依 <code>key</code> 分組：",
+  "g.step13.p2": "主控台也顯示相同的資料，在<strong>用量</strong>頁面上依模型彙總 — 這裡 <code>demo-gpt</code> 反映了疊加在載入總計之上的即時呼叫：",
+  "g.step13.cap": "即時流量後的用量 — <code>demo-gpt</code> 的請求與花費都成長了。",
+  "g.step13.hint": "花費來自組織針對該模型的<strong>費率表</strong>；若沒有費率表，請求仍會被計數，但花費為零。關於寫回如何運作，請參閱 <a href=\"https://github.com/yennanliu/ai-gateway/blob/main/doc/metering-writeback.md\" target=\"_blank\" rel=\"noopener\">metering-writeback.md</a>。",
+
+  "g.step14.h2": "關閉金鑰",
+  "g.step14.p1": "透過控制平面撤銷金鑰。它會立即翻轉為 <code>revoked</code> — 主控台會將它顯示為灰色，並停用撤銷操作：",
+  "g.step14.cap": "已撤銷的金鑰，在主控台中顯示為灰色。",
+  "g.step14.p2": "現在再送出<em>同一個</em>請求。資料平面在每個請求上都會回呼控制平面資料庫，因此下一次呼叫就會被拒絕 — 完全不會接觸到任何供應商：",
+  "g.step14.hint": "<strong>已撤銷</strong>的金鑰會回傳 <code>API key is revoked</code>；從未存在過的金鑰會回傳 <code>invalid API key</code>；<strong>完全沒有金鑰</strong>的請求則會回傳 <code>no API key provided</code>。這三者都是 <code>401</code>，由我們的資料庫裁定 — 絕不會由 proxy 內部的副本決定。",
+
+  "g.part3.kicker": "第 3 部分",
+  "g.part3.h2": "治理實戰",
+  "g.part3.p": "這些控制機制讓它成為一個閘道器，而不只是一個 proxy — 每一項都在請求抵達供應商<em>之前</em>就強制執行，而且每一項都能在載入的服務堆疊上離線示範。透過單一個 OpenAI 形狀的端點路由任何供應商、遮蔽或封鎖有風險的 prompt、攔阻超出預算與超出速率的流量，並串流那些仍會精確計量到每個 token 的回應。",
+
+  "g.step15.h2": "路由任何供應商",
+  "g.step15.p1": "你的用戶端永遠使用 <strong>OpenAI 傳輸格式</strong>；閘道器會向上游翻譯成各個供應商的格式。從 OpenAI 切換到 Anthropic 或 Google 只是一個字的改動 — <code>model</code> 欄位 — 金鑰、URL 與請求主體都不變。載入的示範內建 <code>demo-gpt</code>（OpenAI）、<code>demo-claude</code>（Anthropic）與 <code>demo-gemini</code>（Google Gemini），全部由 stub 以各自的原生傳輸格式離線回應：",
+  "g.step15.hint": "供應商支援來自 LiteLLM，因此註冊表接受它所認識的任何供應商 — OpenAI、Anthropic、Gemini、Bedrock、Azure、Mistral 等等。只要新增一個帶有真實憑證的部署，它就會路由；不需要改動任何閘道器程式碼。",
+
+  "g.step16.h2": "會採取行動的防護機制",
+  "g.step16.p1": "載入的組織政策會在<strong>每個</strong>請求上執行輸入防護機制。PII 會在對外的 prompt 離開閘道器之前就被<strong>遮蔽</strong>，而 prompt injection 的嘗試則會被直接<strong>封鎖</strong>。送出一個電子郵件地址，上游只會看到一個遮蔽用的 token：",
+  "g.step16.p2": "prompt injection 的嘗試永遠不會抵達供應商 — 防護機制會以 <code>400</code> 拒絕它：",
+
+  "g.step17.h2": "預算與速率限制",
+  "g.step17.p1": "預算與速率限制在同一個呼叫前步驟中強制執行，因此會超支的請求會在產生任何花費之前就被攔阻。為金鑰釘上一個毫無餘裕的預算，下一次呼叫就會被以 <code>402</code> 拒絕：",
+  "g.step17.p2": "為金鑰設定一個 <code>rpm_limit</code>，超出它的突發流量就會回傳 <code>429</code>：",
+  "g.step17.hint": "預算採<strong>最明確者優先</strong>的方式解析（<code>key › app › user › team › org</code>），因此金鑰的上限會覆蓋其團隊的上限，而團隊的上限又會覆蓋組織的上限 — 與主控台所使用的範圍劃分相同。",
+
+  "g.step18.h2": "帶計量的串流",
+  "g.step18.p1": "設定 <code>\"stream\": true</code> 即可取得逐 token 的 Server-Sent Events。閘道器會透明地要求供應商在最後一個區塊回報 token 用量，因此串流呼叫的計量與緩衝式呼叫完全相同 — 不會有無聲的低估：",
+  "g.step18.p2": "串流適用於全部三個系列 — stub 會以各供應商原生的 SSE 格式回應 — 而<strong>用量</strong>頁面在串流呼叫之後也會像緩衝式呼叫一樣上升。",
+
+  "g.next.architecture": "運作原理 — 架構",
+  "g.next.sysdesign": "系統設計 ↗",
+  "g.next.runbook": "維運手冊 ↗",
+
+  "g.footer.note": "建構於 LiteLLM Proxy 之上 · 可自行託管 · 開源。"
+};

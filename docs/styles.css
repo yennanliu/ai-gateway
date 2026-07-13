@@ -176,6 +176,26 @@ code {
 :root[data-theme="light"] .theme-toggle .icon-sun { display: none; }
 :root[data-theme="light"] .theme-toggle .icon-moon { display: block; }
 
+/* language toggle — segmented EN / 中 pill */
+.lang-toggle {
+  display: inline-flex; align-items: center; padding: 2px;
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 999px; gap: 1px;
+  transition: border-color .2s;
+}
+.lang-toggle:hover { border-color: var(--border-strong); }
+.lang-toggle .lang-opt {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 26px; height: 28px; padding: 0 8px;
+  font-size: 13px; font-weight: 600; line-height: 1;
+  color: var(--text-muted); border-radius: 999px;
+  transition: background .2s, color .2s;
+  background: transparent; border: 0; cursor: pointer;
+  font-family: inherit;
+}
+.lang-toggle .lang-opt.active { background: var(--surface); color: var(--text); }
+.lang-toggle .lang-opt:focus-visible { border-radius: 999px; }
+
 .nav-toggle {
   display: none; flex-direction: column; gap: 4px;
   background: none; border: 0; cursor: pointer; padding: 8px;

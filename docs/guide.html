@@ -36,15 +36,20 @@
       </a>
 
       <nav class="nav" id="nav">
-        <a href="index.html#overview">Overview</a>
-        <a href="index.html#features">Features</a>
-        <a href="index.html#architecture">Architecture</a>
-        <a href="guide.html" class="active">Guide</a>
+        <a href="index.html#overview" data-i18n="g.nav.overview">Overview</a>
+        <a href="index.html#features" data-i18n="g.nav.features">Features</a>
+        <a href="index.html#architecture" data-i18n="g.nav.architecture">Architecture</a>
+        <a href="guide.html" class="active" data-i18n="g.nav.guide">Guide</a>
       </nav>
 
       <div class="topbar-actions">
-        <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway" target="_blank" rel="noopener">GitHub ↗</a>
-        <a class="btn btn-primary" href="#start">Start</a>
+        <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway" target="_blank" rel="noopener" data-i18n="g.action.github">GitHub ↗</a>
+        <a class="btn btn-primary" href="#start" data-i18n="g.action.start">Start</a>
+      </div>
+
+      <div class="lang-toggle" id="langToggle" role="group" aria-label="Switch language / 切換語言">
+        <button class="lang-opt" type="button" data-lang="en" aria-label="English">EN</button>
+        <button class="lang-opt" type="button" data-lang="zh" aria-label="繁體中文">中</button>
       </div>
 
       <button class="theme-toggle" id="themeToggle" aria-label="Toggle color theme" title="Toggle light / dark theme">
@@ -60,9 +65,9 @@
 
   <!-- ============ HEADER ============ -->
   <header class="guide-header">
-    <span class="eyebrow">Guide</span>
-    <h1>Run the gateway, end to end</h1>
-    <p>Start the full stack, sign in to the console, register a model, issue a virtual key, and send your
+    <span class="eyebrow" data-i18n="g.header.eyebrow">Guide</span>
+    <h1 data-i18n="g.header.h1">Run the gateway, end to end</h1>
+    <p data-i18n="g.header.p">Start the full stack, sign in to the console, register a model, issue a virtual key, and send your
       first governed request — then watch the tokens, cost, and budgets update in real time.</p>
   </header>
 
@@ -70,38 +75,38 @@
 
     <!-- ============ SIDEBAR TOC ============ -->
     <aside class="guide-toc">
-      <div class="guide-toc-title">Getting started</div>
+      <div class="guide-toc-title" data-i18n="g.toc.gettingstarted">Getting started</div>
       <ol>
-        <li><a href="#start">Start the gateway</a></li>
-        <li><a href="#signin">Sign in to the console</a></li>
-        <li><a href="#dashboard">Read the dashboard</a></li>
-        <li><a href="#models">Register a model</a></li>
-        <li><a href="#teams">Create teams</a></li>
-        <li><a href="#keys">Issue a virtual key</a></li>
-        <li><a href="#request">Make your first request</a></li>
-        <li><a href="#usage">Track usage &amp; cost</a></li>
-        <li><a href="#budgets">Set a budget</a></li>
-        <li><a href="#api">Use the API directly</a></li>
+        <li><a href="#start" data-i18n="g.toc.start">Start the gateway</a></li>
+        <li><a href="#signin" data-i18n="g.toc.signin">Sign in to the console</a></li>
+        <li><a href="#dashboard" data-i18n="g.toc.dashboard">Read the dashboard</a></li>
+        <li><a href="#models" data-i18n="g.toc.models">Register a model</a></li>
+        <li><a href="#teams" data-i18n="g.toc.teams">Create teams</a></li>
+        <li><a href="#keys" data-i18n="g.toc.keys">Issue a virtual key</a></li>
+        <li><a href="#request" data-i18n="g.toc.request">Make your first request</a></li>
+        <li><a href="#usage" data-i18n="g.toc.usage">Track usage &amp; cost</a></li>
+        <li><a href="#budgets" data-i18n="g.toc.budgets">Set a budget</a></li>
+        <li><a href="#api" data-i18n="g.toc.api">Use the API directly</a></li>
       </ol>
-      <div class="guide-toc-title" style="margin-top:22px">A key's lifecycle</div>
+      <div class="guide-toc-title" style="margin-top:22px" data-i18n="g.toc.lifecycle">A key's lifecycle</div>
       <ol start="11">
-        <li><a href="#life-issue">Issue a key from the API</a></li>
-        <li><a href="#life-sdk">Call it from your app</a></li>
-        <li><a href="#life-monitor">Watch usage climb</a></li>
-        <li><a href="#life-revoke">Switch the key off</a></li>
+        <li><a href="#life-issue" data-i18n="g.toc.life-issue">Issue a key from the API</a></li>
+        <li><a href="#life-sdk" data-i18n="g.toc.life-sdk">Call it from your app</a></li>
+        <li><a href="#life-monitor" data-i18n="g.toc.life-monitor">Watch usage climb</a></li>
+        <li><a href="#life-revoke" data-i18n="g.toc.life-revoke">Switch the key off</a></li>
       </ol>
-      <div class="guide-toc-title" style="margin-top:22px">Governance in action</div>
+      <div class="guide-toc-title" style="margin-top:22px" data-i18n="g.toc.governance">Governance in action</div>
       <ol start="15">
-        <li><a href="#providers">Route any provider</a></li>
-        <li><a href="#guardrails">Guardrails that act</a></li>
-        <li><a href="#enforce">Budgets &amp; rate limits</a></li>
-        <li><a href="#streaming">Stream with metering</a></li>
+        <li><a href="#providers" data-i18n="g.toc.providers">Route any provider</a></li>
+        <li><a href="#guardrails" data-i18n="g.toc.guardrails">Guardrails that act</a></li>
+        <li><a href="#enforce" data-i18n="g.toc.enforce">Budgets &amp; rate limits</a></li>
+        <li><a href="#streaming" data-i18n="g.toc.streaming">Stream with metering</a></li>
       </ol>
     </aside>
 
     <!-- ============ CONTENT ============ -->
     <main class="guide-main">
-      <p class="guide-intro">
+      <p class="guide-intro" data-i18n="g.intro">
         This walkthrough uses the <strong>one-command Docker stack</strong>, which boots the whole gateway
         pre-seeded with demo data and a fake upstream provider — so every step below is real, with
         <strong>no cloud account and no provider API key</strong>. You only need Docker installed.
@@ -109,20 +114,20 @@
 
       <!-- 1 -->
       <section class="step-block" id="start">
-        <div class="step-head"><span class="step-num">1</span><h2>Start the gateway</h2></div>
-        <p>From the repository root, bring the whole stack up in Docker and leave it running:</p>
+        <div class="step-head"><span class="step-num">1</span><h2 data-i18n="g.step1.h2">Start the gateway</h2></div>
+        <p data-i18n="g.step1.p1">From the repository root, bring the whole stack up in Docker and leave it running:</p>
         <div class="code" data-copy>
           <button class="copy-btn" aria-label="Copy">Copy</button>
           <pre><code>make docker-up</code></pre>
         </div>
-        <p>This builds and starts four services and seeds a demo organization:</p>
+        <p data-i18n="g.step1.p2">This builds and starts four services and seeds a demo organization:</p>
         <ul>
-          <li><strong>Control plane</strong> (governance API) — <code>http://localhost:8080</code></li>
-          <li><strong>LiteLLM proxy</strong> (the OpenAI-compatible endpoint) — <code>http://localhost:4000</code></li>
-          <li><strong>Admin console</strong> — <code>http://localhost:8081</code></li>
-          <li><strong>Stub provider</strong> (fake upstream, so requests need no real key) — <code>http://localhost:9099</code></li>
+          <li data-i18n="g.step1.li1"><strong>Control plane</strong> (governance API) — <code>http://localhost:8080</code></li>
+          <li data-i18n="g.step1.li2"><strong>LiteLLM proxy</strong> (the OpenAI-compatible endpoint) — <code>http://localhost:4000</code></li>
+          <li data-i18n="g.step1.li3"><strong>Admin console</strong> — <code>http://localhost:8081</code></li>
+          <li data-i18n="g.step1.li4"><strong>Stub provider</strong> (fake upstream, so requests need no real key) — <code>http://localhost:9099</code></li>
         </ul>
-        <p>When it finishes, it prints the seeded <strong>org id</strong> and a ready-to-use
+        <p data-i18n="g.step1.p3">When it finishes, it prints the seeded <strong>org id</strong> and a ready-to-use
           <strong>virtual key</strong> — keep both handy:</p>
         <div class="code" data-copy>
           <button class="copy-btn" aria-label="Copy">Copy</button>
@@ -137,86 +142,86 @@
         </div>
         <div class="hint">
           <span class="hint-ic">💡</span>
-          <p>Your <code>org</code> id and key will differ from the example above — copy the values your
+          <p data-i18n="g.step1.hint">Your <code>org</code> id and key will differ from the example above — copy the values your
             own run prints. Stop everything later with <code>make docker-down</code>.</p>
         </div>
       </section>
 
       <!-- 2 -->
       <section class="step-block" id="signin">
-        <div class="step-head"><span class="step-num">2</span><h2>Sign in to the console</h2></div>
-        <p>Open <a href="http://localhost:8081" target="_blank" rel="noopener"><code>http://localhost:8081</code></a>.
+        <div class="step-head"><span class="step-num">2</span><h2 data-i18n="g.step2.h2">Sign in to the console</h2></div>
+        <p data-i18n="g.step2.p1">Open <a href="http://localhost:8081" target="_blank" rel="noopener"><code>http://localhost:8081</code></a>.
           Authentication is a dev stand-in until SSO lands, so you sign in by identity rather than password:
           enter the user id <code>admin</code>, paste the <strong>org id</strong> from step 1, keep the role
           <code>org-admin</code>, and choose <strong>Enter console</strong>.</p>
         <figure class="shot">
           <div class="frame"><img src="assets/guide/01-signin.png" alt="AI Gateway console dev sign-in screen with user id, org id, and role fields" loading="lazy" /></div>
-          <figcaption>The console sign-in — user id, org id, and role.</figcaption>
+          <figcaption data-i18n="g.step2.cap">The console sign-in — user id, org id, and role.</figcaption>
         </figure>
         <div class="hint">
           <span class="hint-ic">🔑</span>
-          <p><strong>org-admin</strong> is the top role: an org-admin has every team-level permission across
+          <p data-i18n="g.step2.hint"><strong>org-admin</strong> is the top role: an org-admin has every team-level permission across
             the whole organization.</p>
         </div>
       </section>
 
       <!-- 3 -->
       <section class="step-block" id="dashboard">
-        <div class="step-head"><span class="step-num">3</span><h2>Read the dashboard</h2></div>
-        <p>The dashboard is the at-a-glance view of your org: the control-plane health, spend so far,
+        <div class="step-head"><span class="step-num">3</span><h2 data-i18n="g.step3.h2">Read the dashboard</h2></div>
+        <p data-i18n="g.step3.p1">The dashboard is the at-a-glance view of your org: the control-plane health, spend so far,
           total requests, and how many budgets are approaching their limit. On a fresh seed you'll already
           see activity from the demo data.</p>
         <figure class="shot">
           <div class="frame"><img src="assets/guide/02-dashboard.png" alt="Dashboard showing Governance API healthy, total cost, request count, and budget alerts" loading="lazy" /></div>
-          <figcaption>Dashboard — health, cost, requests, and budget alerts.</figcaption>
+          <figcaption data-i18n="g.step3.cap">Dashboard — health, cost, requests, and budget alerts.</figcaption>
         </figure>
       </section>
 
       <!-- 4 -->
       <section class="step-block" id="models">
-        <div class="step-head"><span class="step-num">4</span><h2>Register a model</h2></div>
-        <p>The <strong>model registry</strong> is the source of truth for what callers can use. Each entry maps
+        <div class="step-head"><span class="step-num">4</span><h2 data-i18n="g.step4.h2">Register a model</h2></div>
+        <p data-i18n="g.step4.p1">The <strong>model registry</strong> is the source of truth for what callers can use. Each entry maps
           a friendly <strong>public name</strong> (what clients ask for) to a <strong>provider</strong> and the
           real upstream <strong>model</strong>. Add one with the form, or start from the three seeded demo models.</p>
         <figure class="shot">
           <div class="frame"><img src="assets/guide/03-models.png" alt="Model registry listing demo-gpt, demo-gpt-4o, and demo-claude with provider and status" loading="lazy" /></div>
-          <figcaption>Model registry — public name → provider → upstream model.</figcaption>
+          <figcaption data-i18n="g.step4.cap">Model registry — public name → provider → upstream model.</figcaption>
         </figure>
         <div class="hint">
           <span class="hint-ic">⚙️</span>
-          <p>The registry is the source of truth; the LiteLLM proxy config is a <strong>derived artifact</strong>
+          <p data-i18n="g.step4.hint">The registry is the source of truth; the LiteLLM proxy config is a <strong>derived artifact</strong>
             compiled from it, with credentials emitted as environment references — never plaintext.</p>
         </div>
       </section>
 
       <!-- 5 -->
       <section class="step-block" id="teams">
-        <div class="step-head"><span class="step-num">5</span><h2>Create teams</h2></div>
-        <p>Everything is scoped <code>org › team › user › app</code>. Teams are how you group people and
+        <div class="step-head"><span class="step-num">5</span><h2 data-i18n="g.step5.h2">Create teams</h2></div>
+        <p data-i18n="g.step5.p1">Everything is scoped <code>org › team › user › app</code>. Teams are how you group people and
           attribute spend. The seed ships three — Platform, Research, and Support — and you can add more from
           the <strong>Teams</strong> page.</p>
         <figure class="shot">
           <div class="frame"><img src="assets/guide/04-teams.png" alt="Teams page listing Platform, Research, and Support with their team IDs" loading="lazy" /></div>
-          <figcaption>Teams — the unit of grouping and cost attribution.</figcaption>
+          <figcaption data-i18n="g.step5.cap">Teams — the unit of grouping and cost attribution.</figcaption>
         </figure>
       </section>
 
       <!-- 6 -->
       <section class="step-block" id="keys">
-        <div class="step-head"><span class="step-num">6</span><h2>Issue a virtual key</h2></div>
-        <p>Consumers never touch your provider keys — they get a scoped <strong>virtual key</strong>. Pick a team,
+        <div class="step-head"><span class="step-num">6</span><h2 data-i18n="g.step6.h2">Issue a virtual key</h2></div>
+        <p data-i18n="g.step6.p1">Consumers never touch your provider keys — they get a scoped <strong>virtual key</strong>. Pick a team,
           choose <strong>Issue key</strong>, and the full key is shown <strong>exactly once</strong>. After that only
           a display prefix and a hash are stored, and you can <strong>Revoke</strong> a key at any time.</p>
         <figure class="shot">
           <div class="frame"><img src="assets/guide/05-keys.png" alt="Virtual keys page with a team selector, Issue key button, and a table of key prefixes with revoke actions" loading="lazy" /></div>
-          <figcaption>Virtual keys — issue per team; only the prefix + hash are stored.</figcaption>
+          <figcaption data-i18n="g.step6.cap">Virtual keys — issue per team; only the prefix + hash are stored.</figcaption>
         </figure>
       </section>
 
       <!-- 7 -->
       <section class="step-block" id="request">
-        <div class="step-head"><span class="step-num">7</span><h2>Make your first request</h2></div>
-        <p>Point any OpenAI-compatible client at the proxy on port <code>4000</code> and authenticate with your
+        <div class="step-head"><span class="step-num">7</span><h2 data-i18n="g.step7.h2">Make your first request</h2></div>
+        <p data-i18n="g.step7.p1">Point any OpenAI-compatible client at the proxy on port <code>4000</code> and authenticate with your
           virtual key. The wire shape is exactly OpenAI's — only the base URL and the key change:</p>
         <div class="code" data-copy>
           <button class="copy-btn" aria-label="Copy">Copy</button>
@@ -230,7 +235,7 @@ curl <span class="c-str">http://localhost:4000/v1/chat/completions</span> \
     "messages": [{"role":"user","content":"Say hello"}]
   }'</span></code></pre>
         </div>
-        <p>You get a standard chat-completion back — served here by the stub upstream — with a token count the
+        <p data-i18n="g.step7.p2">You get a standard chat-completion back — served here by the stub upstream — with a token count the
           gateway uses to meter and price the call:</p>
         <div class="code" data-copy>
           <button class="copy-btn" aria-label="Copy">Copy</button>
@@ -244,48 +249,48 @@ curl <span class="c-str">http://localhost:4000/v1/chat/completions</span> \
         </div>
         <div class="hint">
           <span class="hint-ic">🛡️</span>
-          <p>A wrong or revoked key is rejected before it ever reaches a provider — the proxy calls back into
+          <p data-i18n="g.step7.hint">A wrong or revoked key is rejected before it ever reaches a provider — the proxy calls back into
             the control-plane DB to authenticate every request and returns <code>401 invalid API key</code>.</p>
         </div>
       </section>
 
       <!-- 8 -->
       <section class="step-block" id="usage">
-        <div class="step-head"><span class="step-num">8</span><h2>Track usage &amp; cost</h2></div>
-        <p>Every request you just made is metered, priced, and attributed. The <strong>Usage</strong> page breaks
+        <div class="step-head"><span class="step-num">8</span><h2 data-i18n="g.step8.h2">Track usage &amp; cost</h2></div>
+        <p data-i18n="g.step8.p1">Every request you just made is metered, priced, and attributed. The <strong>Usage</strong> page breaks
           spend down by model — prompt and completion tokens, cost, and request counts — and the same data can be
           grouped by team or by day for invoices and CSV export.</p>
         <figure class="shot">
           <div class="frame"><img src="assets/guide/06-usage.png" alt="Usage page with total cost, request count, and a per-model breakdown of tokens, cost, and requests" loading="lazy" /></div>
-          <figcaption>Usage — per-model tokens, cost, and request counts.</figcaption>
+          <figcaption data-i18n="g.step8.cap">Usage — per-model tokens, cost, and request counts.</figcaption>
         </figure>
       </section>
 
       <!-- 9 -->
       <section class="step-block" id="budgets">
-        <div class="step-head"><span class="step-num">9</span><h2>Set a budget</h2></div>
-        <p>Attach a spending <strong>limit</strong> at any scope — key, app, user, team, or org. Budgets resolve
+        <div class="step-head"><span class="step-num">9</span><h2 data-i18n="g.step9.h2">Set a budget</h2></div>
+        <p data-i18n="g.step9.p1">Attach a spending <strong>limit</strong> at any scope — key, app, user, team, or org. Budgets resolve
           <strong>most-specific-wins</strong> (<code>key › app › user › team › org</code>), and the console flags
           any that cross their alert threshold before they overrun.</p>
         <figure class="shot">
           <div class="frame"><img src="assets/guide/07-budgets.png" alt="Budgets page with a set-budget form, an over-threshold alert, and a table of scope, limit, spent, and period" loading="lazy" /></div>
-          <figcaption>Budgets — limits per scope, with over-threshold alerts.</figcaption>
+          <figcaption data-i18n="g.step9.cap">Budgets — limits per scope, with over-threshold alerts.</figcaption>
         </figure>
       </section>
 
       <!-- 10 -->
       <section class="step-block" id="api">
-        <div class="step-head"><span class="step-num">10</span><h2>Use the API directly</h2></div>
-        <p>Everything the console does is the control-plane REST API — orgs, teams, keys, models, budgets, and
+        <div class="step-head"><span class="step-num">10</span><h2 data-i18n="g.step10.h2">Use the API directly</h2></div>
+        <p data-i18n="g.step10.p1">Everything the console does is the control-plane REST API — orgs, teams, keys, models, budgets, and
           usage. Explore and try it interactively in the Swagger UI at
           <a href="http://localhost:8080/docs" target="_blank" rel="noopener"><code>http://localhost:8080/docs</code></a>.
           Authenticate the same way the console does, with the <code>X-User-Id</code>, <code>X-Org-Id</code>, and
           <code>X-Org-Roles</code> headers.</p>
         <figure class="shot">
           <div class="frame"><img src="assets/guide/08-swagger.png" alt="Swagger UI for the AI Gateway Governance API showing system and orgs endpoints" loading="lazy" /></div>
-          <figcaption>The Governance API in Swagger UI (<code>/docs</code>).</figcaption>
+          <figcaption data-i18n="g.step10.cap">The Governance API in Swagger UI (<code>/docs</code>).</figcaption>
         </figure>
-        <p>A quick health/version check needs no console at all:</p>
+        <p data-i18n="g.step10.p2">A quick health/version check needs no console at all:</p>
         <div class="code" data-copy>
           <button class="copy-btn" aria-label="Copy">Copy</button>
           <pre><code>curl -s <span class="c-str">http://localhost:8080/api/v1/version</span>
@@ -296,17 +301,17 @@ curl <span class="c-str">http://localhost:4000/v1/chat/completions</span> \
 
       <!-- ===== PART 2: a key's lifecycle ===== -->
       <div class="guide-part">
-        <span class="guide-part-kicker">Part 2</span>
-        <h2>A virtual key's lifecycle</h2>
-        <p>The same story end to end, driven from the API: mint a key, use it from your own app, watch the
+        <span class="guide-part-kicker" data-i18n="g.part2.kicker">Part 2</span>
+        <h2 data-i18n="g.part2.h2">A virtual key's lifecycle</h2>
+        <p data-i18n="g.part2.p">The same story end to end, driven from the API: mint a key, use it from your own app, watch the
           spend it produces, then switch it off and confirm it stops working — the moment you revoke, the data
           plane rejects it, because the control-plane DB is the single source of truth.</p>
       </div>
 
       <!-- 11 -->
       <section class="step-block" id="life-issue">
-        <div class="step-head"><span class="step-num">11</span><h2>Issue a key from the API</h2></div>
-        <p>Create a key scoped to a team (and optionally restricted to specific models). The full key is
+        <div class="step-head"><span class="step-num">11</span><h2 data-i18n="g.step11.h2">Issue a key from the API</h2></div>
+        <p data-i18n="g.step11.p1">Create a key scoped to a team (and optionally restricted to specific models). The full key is
           returned <strong>once</strong>, in the <code>key</code> field — store it now; afterwards only the
           <code>prefix</code> and a hash remain.</p>
         <div class="code" data-copy>
@@ -326,17 +331,17 @@ curl <span class="c-str">http://localhost:4000/v1/chat/completions</span> \
         </div>
         <div class="hint">
           <span class="hint-ic">💡</span>
-          <p>Need the team id? <code>GET /api/v1/teams?org_id=$ORG_ID</code> lists them, or read it off the
+          <p data-i18n="g.step11.hint">Need the team id? <code>GET /api/v1/teams?org_id=$ORG_ID</code> lists them, or read it off the
             <strong>Teams</strong> page (step 5).</p>
         </div>
       </section>
 
       <!-- 12 -->
       <section class="step-block" id="life-sdk">
-        <div class="step-head"><span class="step-num">12</span><h2>Call it from your app</h2></div>
-        <p>Because the proxy is OpenAI-compatible, you don't need a new SDK — point the official OpenAI client
+        <div class="step-head"><span class="step-num">12</span><h2 data-i18n="g.step12.h2">Call it from your app</h2></div>
+        <p data-i18n="g.step12.p1">Because the proxy is OpenAI-compatible, you don't need a new SDK — point the official OpenAI client
           at the gateway and pass the virtual key. Nothing else in your code changes.</p>
-        <p><strong>Python</strong></p>
+        <p data-i18n="g.step12.p2"><strong>Python</strong></p>
         <div class="code" data-copy>
           <button class="copy-btn" aria-label="Copy">Copy</button>
           <pre><code><span class="c-cmt"># pip install openai</span>
@@ -353,7 +358,7 @@ resp = client.chat.completions.create(
 )
 print(resp.choices[0].message.content)</code></pre>
         </div>
-        <p><strong>JavaScript / TypeScript</strong></p>
+        <p data-i18n="g.step12.p3"><strong>JavaScript / TypeScript</strong></p>
         <div class="code" data-copy>
           <button class="copy-btn" aria-label="Copy">Copy</button>
           <pre><code><span class="c-cmt">// npm i openai</span>
@@ -374,8 +379,8 @@ console.log(r.choices[0].message.content);</code></pre>
 
       <!-- 13 -->
       <section class="step-block" id="life-monitor">
-        <div class="step-head"><span class="step-num">13</span><h2>Watch usage climb</h2></div>
-        <p>Every successful call is metered, priced, and attributed to the calling key — you can see the numbers
+        <div class="step-head"><span class="step-num">13</span><h2 data-i18n="g.step13.h2">Watch usage climb</h2></div>
+        <p data-i18n="g.step13.p1">Every successful call is metered, priced, and attributed to the calling key — you can see the numbers
           move. Ask the usage endpoint to group by <code>key</code> before and after a few requests:</p>
         <div class="code" data-copy>
           <button class="copy-btn" aria-label="Copy">Copy</button>
@@ -390,15 +395,15 @@ console.log(r.choices[0].message.content);</code></pre>
     "prompt_tokens": 40, "completion_tokens": 35, "cost": "0.037500" }
 ]</code></pre>
         </div>
-        <p>The console shows the same, rolled up by model on the <strong>Usage</strong> page — here <code>demo-gpt</code>
+        <p data-i18n="g.step13.p2">The console shows the same, rolled up by model on the <strong>Usage</strong> page — here <code>demo-gpt</code>
           reflects the live calls on top of the seeded totals:</p>
         <figure class="shot">
           <div class="frame"><img src="assets/guide/10-usage-live.png" alt="Usage page showing demo-gpt with 15 requests and $1.5375 after live calls, above seeded rows" loading="lazy" /></div>
-          <figcaption>Usage after live traffic — <code>demo-gpt</code> requests and cost have grown.</figcaption>
+          <figcaption data-i18n="g.step13.cap">Usage after live traffic — <code>demo-gpt</code> requests and cost have grown.</figcaption>
         </figure>
         <div class="hint">
           <span class="hint-ic">📈</span>
-          <p>Cost comes from the org's <strong>rate card</strong> for that model; with no card the request is
+          <p data-i18n="g.step13.hint">Cost comes from the org's <strong>rate card</strong> for that model; with no card the request is
             still counted, at zero cost. See <a href="https://github.com/yennanliu/ai-gateway/blob/main/doc/metering-writeback.md" target="_blank" rel="noopener">metering-writeback.md</a>
             for how the write-back works.</p>
         </div>
@@ -406,8 +411,8 @@ console.log(r.choices[0].message.content);</code></pre>
 
       <!-- 14 -->
       <section class="step-block" id="life-revoke">
-        <div class="step-head"><span class="step-num">14</span><h2>Switch the key off</h2></div>
-        <p>Revoke the key through the control plane. It flips to <code>revoked</code> immediately — the console
+        <div class="step-head"><span class="step-num">14</span><h2 data-i18n="g.step14.h2">Switch the key off</h2></div>
+        <p data-i18n="g.step14.p1">Revoke the key through the control plane. It flips to <code>revoked</code> immediately — the console
           shows it greyed out with the revoke action disabled:</p>
         <div class="code" data-copy>
           <button class="copy-btn" aria-label="Copy">Copy</button>
@@ -417,9 +422,9 @@ console.log(r.choices[0].message.content);</code></pre>
         </div>
         <figure class="shot">
           <div class="frame"><img src="assets/guide/09-keys-revoked.png" alt="Virtual keys table showing one key with a red revoked status and a disabled revoke button" loading="lazy" /></div>
-          <figcaption>The revoked key, greyed out in the console.</figcaption>
+          <figcaption data-i18n="g.step14.cap">The revoked key, greyed out in the console.</figcaption>
         </figure>
-        <p>Now send the <em>same</em> request again. The data plane calls back into the control-plane DB on every
+        <p data-i18n="g.step14.p2">Now send the <em>same</em> request again. The data plane calls back into the control-plane DB on every
           request, so the very next call is rejected — no provider is ever contacted:</p>
         <div class="code" data-copy>
           <button class="copy-btn" aria-label="Copy">Copy</button>
@@ -433,7 +438,7 @@ console.log(r.choices[0].message.content);</code></pre>
         </div>
         <div class="hint">
           <span class="hint-ic">🛡️</span>
-          <p>A <strong>revoked</strong> key returns <code>API key is revoked</code>; a key that never existed
+          <p data-i18n="g.step14.hint">A <strong>revoked</strong> key returns <code>API key is revoked</code>; a key that never existed
             returns <code>invalid API key</code>; a request with <strong>no key at all</strong> returns
             <code>no API key provided</code>. All three are <code>401</code>, decided by our DB — never by a
             copy inside the proxy.</p>
@@ -442,9 +447,9 @@ console.log(r.choices[0].message.content);</code></pre>
 
       <!-- ===== PART 3: governance in action ===== -->
       <div class="guide-part">
-        <span class="guide-part-kicker">Part 3</span>
-        <h2>Governance in action</h2>
-        <p>The controls that make this a gateway and not just a proxy — every one enforced <em>before</em> a
+        <span class="guide-part-kicker" data-i18n="g.part3.kicker">Part 3</span>
+        <h2 data-i18n="g.part3.h2">Governance in action</h2>
+        <p data-i18n="g.part3.p">The controls that make this a gateway and not just a proxy — every one enforced <em>before</em> a
           request reaches a provider, and every one demoable offline against the seeded stack. Route any
           provider through one OpenAI-shaped endpoint, redact or block risky prompts, stop over-budget and
           over-rate traffic, and stream responses that still meter to the token.</p>
@@ -452,8 +457,8 @@ console.log(r.choices[0].message.content);</code></pre>
 
       <!-- 15 -->
       <section class="step-block" id="providers">
-        <div class="step-head"><span class="step-num">15</span><h2>Route any provider</h2></div>
-        <p>Your client always speaks the <strong>OpenAI wire shape</strong>; the gateway translates to each
+        <div class="step-head"><span class="step-num">15</span><h2 data-i18n="g.step15.h2">Route any provider</h2></div>
+        <p data-i18n="g.step15.p1">Your client always speaks the <strong>OpenAI wire shape</strong>; the gateway translates to each
           provider upstream. Switching from OpenAI to Anthropic or Google is a one-word change — the
           <code>model</code> field — with the same key, URL, and request body. The seeded demo ships
           <code>demo-gpt</code> (OpenAI), <code>demo-claude</code> (Anthropic) and <code>demo-gemini</code>
@@ -471,7 +476,7 @@ done
         </div>
         <div class="hint">
           <span class="hint-ic">🔀</span>
-          <p>Provider support comes from LiteLLM, so the registry accepts any provider it knows — OpenAI,
+          <p data-i18n="g.step15.hint">Provider support comes from LiteLLM, so the registry accepts any provider it knows — OpenAI,
             Anthropic, Gemini, Bedrock, Azure, Mistral, and more. Add a deployment with real credentials and
             it routes; no gateway code changes.</p>
         </div>
@@ -479,8 +484,8 @@ done
 
       <!-- 16 -->
       <section class="step-block" id="guardrails">
-        <div class="step-head"><span class="step-num">16</span><h2>Guardrails that act</h2></div>
-        <p>The seeded org policy runs input guardrails on <strong>every</strong> request. PII is
+        <div class="step-head"><span class="step-num">16</span><h2 data-i18n="g.step16.h2">Guardrails that act</h2></div>
+        <p data-i18n="g.step16.p1">The seeded org policy runs input guardrails on <strong>every</strong> request. PII is
           <strong>redacted</strong> from the outbound prompt before it leaves the gateway, and prompt-injection
           attempts are <strong>blocked</strong> outright. Send an email address and the upstream only ever sees
           a redaction token:</p>
@@ -493,7 +498,7 @@ done
 <span class="c-cmt"># The stub echoes back exactly what it received — note the address is gone:</span>
 <span class="c-cmt"># → "content": "Hello from the AI Gateway stub. [echo] email me at [REDACTED:email]"</span></code></pre>
         </div>
-        <p>A prompt-injection attempt never reaches a provider — the guardrail rejects it with
+        <p data-i18n="g.step16.p2">A prompt-injection attempt never reaches a provider — the guardrail rejects it with
           <code>400</code>:</p>
         <div class="code" data-copy>
           <button class="copy-btn" aria-label="Copy">Copy</button>
@@ -508,8 +513,8 @@ done
 
       <!-- 17 -->
       <section class="step-block" id="enforce">
-        <div class="step-head"><span class="step-num">17</span><h2>Budgets &amp; rate limits</h2></div>
-        <p>Budgets and rate limits are enforced in the same pre-call step, so a request that would overrun is
+        <div class="step-head"><span class="step-num">17</span><h2 data-i18n="g.step17.h2">Budgets &amp; rate limits</h2></div>
+        <p data-i18n="g.step17.p1">Budgets and rate limits are enforced in the same pre-call step, so a request that would overrun is
           stopped before it costs anything. Pin a key-scoped budget with no headroom and the next call is
           rejected with <code>402</code>:</p>
         <div class="code" data-copy>
@@ -522,7 +527,7 @@ curl -s -X PUT <span class="c-str">http://localhost:8080/api/v1/budgets</span> \
 
 <span class="c-cmt"># The next completion on that key → HTTP 402 { "message": "budget exceeded" }</span></code></pre>
         </div>
-        <p>Give a key an <code>rpm_limit</code> and a burst past it returns <code>429</code>:</p>
+        <p data-i18n="g.step17.p2">Give a key an <code>rpm_limit</code> and a burst past it returns <code>429</code>:</p>
         <div class="code" data-copy>
           <button class="copy-btn" aria-label="Copy">Copy</button>
           <pre><code><span class="c-cmt"># Issue a key capped at 1 request/minute</span>
@@ -535,15 +540,15 @@ curl -s <span class="c-str">http://localhost:8080/api/v1/keys</span> \
         </div>
         <div class="hint">
           <span class="hint-ic">⚖️</span>
-          <p>Budgets resolve <strong>most-specific-wins</strong> (<code>key › app › user › team › org</code>),
+          <p data-i18n="g.step17.hint">Budgets resolve <strong>most-specific-wins</strong> (<code>key › app › user › team › org</code>),
             so a key limit overrides its team's, which overrides the org's — the same scoping the console uses.</p>
         </div>
       </section>
 
       <!-- 18 -->
       <section class="step-block" id="streaming">
-        <div class="step-head"><span class="step-num">18</span><h2>Stream with metering</h2></div>
-        <p>Set <code>"stream": true</code> for token-by-token Server-Sent Events. The gateway transparently asks
+        <div class="step-head"><span class="step-num">18</span><h2 data-i18n="g.step18.h2">Stream with metering</h2></div>
+        <p data-i18n="g.step18.p1">Set <code>"stream": true</code> for token-by-token Server-Sent Events. The gateway transparently asks
           the provider to report token usage on the final chunk, so a streamed call meters exactly like a
           buffered one — no silent under-counting:</p>
         <div class="code" data-copy>
@@ -557,13 +562,13 @@ data: {"choices":[{"delta":{"content":"Hello from the AI Gateway stub."}}]}
 data: {"choices":[],"usage":{"prompt_tokens":8,"completion_tokens":7,"total_tokens":15}}
 data: [DONE]</code></pre>
         </div>
-        <p>Streaming works for all three families — the stub replies in each provider's native SSE format — and
+        <p data-i18n="g.step18.p2">Streaming works for all three families — the stub replies in each provider's native SSE format — and
           the <strong>Usage</strong> page climbs after a streamed call just as it does for a buffered one.</p>
 
         <div class="guide-next">
-          <a class="btn btn-secondary" href="index.html#architecture">How it works — architecture</a>
-          <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway/blob/main/doc/system-design.md" target="_blank" rel="noopener">System design ↗</a>
-          <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway/blob/main/doc/runbook.md" target="_blank" rel="noopener">Runbook ↗</a>
+          <a class="btn btn-secondary" href="index.html#architecture" data-i18n="g.next.architecture">How it works — architecture</a>
+          <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway/blob/main/doc/system-design.md" target="_blank" rel="noopener" data-i18n="g.next.sysdesign">System design ↗</a>
+          <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway/blob/main/doc/runbook.md" target="_blank" rel="noopener" data-i18n="g.next.runbook">Runbook ↗</a>
         </div>
       </section>
     </main>
@@ -584,10 +589,12 @@ data: [DONE]</code></pre>
         <a href="https://github.com/yennanliu/ai-gateway" target="_blank" rel="noopener">GitHub</a>
         <a href="https://github.com/yennanliu/ai-gateway/blob/main/doc/system-design.md" target="_blank" rel="noopener">System design</a>
       </nav>
-      <p class="footer-note">Built on LiteLLM Proxy · Self-hostable · Open source.</p>
+      <p class="footer-note" data-i18n="g.footer.note">Built on LiteLLM Proxy · Self-hostable · Open source.</p>
     </div>
   </footer>
 
+  <script src="i18n.guide.js"></script>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
   <script>
     // Scroll-spy for the guide sidebar TOC.
