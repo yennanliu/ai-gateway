@@ -206,25 +206,37 @@ if [ -z "$NEWKEY" ] || [ -z "$NEWKEY_ID" ]; then ko "parse issued key id/secret"
   assert_code "revoked key is rejected by the proxy (DB is source of truth)" 401
 fi
 
-# ---- BILLING / USAGE AGGREGATION (control plane read path) -------------------
-# NOTE: proxy-side metering write-back (the AIGatewayLogger success callback in
-# data-plane/hooks/callbacks.py) is not yet wired into the compiled LiteLLM
-# config, so a live chat completion does not increment usage here. We therefore
-# validate the billing read/aggregation path over the seeded usage instead of a
-# post-call delta. See config_compiler.py (only custom_auth is emitted today).
+# ---- BILLING / USAGE AGGREGATION + live metering write-back -----------------
+# The AIGatewayLogger success callback (data-plane/hooks/callbacks.py) is wired
+# into the compiled config via litellm_settings.callbacks (see config_compiler.py
+# and doc/metering-writeback.md), so a live completion increments usage. We assert
+# both the read/aggregation path and a post-call delta.
 section "Billing & usage aggregation (control plane)"
+req_total() { # sum of .requests across the usage rows in file $1
+  if [ "$HAVE_JQ" = 1 ]; then
+    # `add // 0` guards the empty-array case (add of [] is null, which breaks -gt).
+    jq '[.[].requests] | add // 0' "$1" 2>/dev/null || echo 0
+  else
+    grep -oE '"requests":[0-9]+' "$1" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}'
+  fi
+}
 http GET "$GOV/api/v1/usage?group_by=model" "${ADMIN[@]}"
 assert_code "GET /api/v1/usage?group_by=model" 200
-if [ "$HAVE_JQ" = 1 ]; then
-  # `add // 0` guards the empty-array case (add of [] is null, which would break -gt).
-  TOTAL_REQ=$(jq '[.[].requests] | add // 0' "$LAST_BODY" 2>/dev/null || echo 0)
-else
-  TOTAL_REQ=$(grep -oE '"requests":[0-9]+' "$LAST_BODY" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true)
-fi
-if [ "${TOTAL_REQ:-0}" -gt 0 ]; then
-  ok "usage aggregation reports seeded requests (total=$TOTAL_REQ)"
+BEFORE_REQ=$(req_total "$LAST_BODY")
+if [ "${BEFORE_REQ:-0}" -gt 0 ]; then
+  ok "usage aggregation reports requests (total=$BEFORE_REQ)"
 else
   ko "usage aggregation returned no requests"
+fi
+# Live metering write-back: one real completion must increment the total.
+chat "$KEY" "demo-gpt"
+assert_code "seeded key completes a request" 200
+http GET "$GOV/api/v1/usage?group_by=model" "${ADMIN[@]}"
+AFTER_REQ=$(req_total "$LAST_BODY")
+if [ "${AFTER_REQ:-0}" -gt "${BEFORE_REQ:-0}" ]; then
+  ok "live completion incremented usage (before=$BEFORE_REQ after=$AFTER_REQ)"
+else
+  ko "usage did not increment after a live completion (before=$BEFORE_REQ after=$AFTER_REQ)"
 fi
 http GET "$GOV/api/v1/invoices" "${ADMIN[@]}"
 assert_code "GET /api/v1/invoices" 200

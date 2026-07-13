@@ -85,4 +85,19 @@ async def user_api_key_auth(request: object, api_key: str):  # noqa: ANN201 - Li
         raise HTTPException(status_code=401, detail=str(exc)) from exc
     finally:
         session.close()
-    return UserAPIKeyAuth(api_key=api_key, team_id=ctx.team_id)
+    # Carry our scope onto the auth object so the success-callback can attribute
+    # usage back to our org/team/key. LiteLLM surfaces org_id/team_id/key_alias in
+    # the logging metadata (user_api_key_*); `key_alias` carries OUR internal key
+    # id (not LiteLLM's hashed token). `metadata` is a belt-and-braces fallback.
+    # See doc/metering-writeback.md.
+    return UserAPIKeyAuth(
+        api_key=api_key,
+        team_id=ctx.team_id,
+        org_id=ctx.org_id,
+        key_alias=ctx.key_id,
+        metadata={
+            "aigw_key_id": ctx.key_id,
+            "aigw_org_id": ctx.org_id,
+            "aigw_team_id": ctx.team_id,
+        },
+    )

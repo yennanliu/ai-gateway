@@ -24,11 +24,30 @@ def messages_text(messages: list[dict[str, Any]]) -> str:
 
 
 def scope_from(user_api_key_dict: Any) -> dict[str, str | None]:
-    """Extract our scope fields from LiteLLM's auth object."""
+    """Extract our scope fields from LiteLLM's auth object (pre-call path)."""
     return {
         "team_id": getattr(user_api_key_dict, "team_id", None),
         "org_id": getattr(user_api_key_dict, "org_id", None),
         "key_id": getattr(user_api_key_dict, "api_key", None),
+    }
+
+
+def scope_from_logging_metadata(meta: dict[str, Any]) -> dict[str, str | None]:
+    """Extract our scope from the LiteLLM success-event logging metadata.
+
+    LiteLLM flattens the auth object into ``user_api_key_*`` keys; we set
+    ``key_alias`` to OUR internal key id in the custom-auth adapter, and stash a
+    fallback copy under the auth object's own ``metadata`` (surfaced here as
+    ``user_api_key_metadata`` / ``user_api_key_auth_metadata``). See
+    doc/metering-writeback.md.
+    """
+    fallback = meta.get("user_api_key_metadata") or meta.get("user_api_key_auth_metadata") or {}
+    if not isinstance(fallback, dict):
+        fallback = {}
+    return {
+        "org_id": meta.get("user_api_key_org_id") or fallback.get("aigw_org_id"),
+        "team_id": meta.get("user_api_key_team_id") or fallback.get("aigw_team_id"),
+        "key_id": meta.get("user_api_key_alias") or fallback.get("aigw_key_id"),
     }
 
 
@@ -67,9 +86,12 @@ class AIGatewayLogger(CustomLogger):
         self, kwargs: dict[str, Any], response_obj: Any, start_time: Any, end_time: Any
     ) -> None:
         usage = getattr(response_obj, "usage", None)
-        scope = scope_from(
-            kwargs.get("litellm_params", {}).get("metadata", {}).get("user_api_key_auth")
-        )
+        meta = (kwargs.get("litellm_params") or {}).get("metadata") or {}
+        scope = scope_from_logging_metadata(meta)
+        # `model_group` is the public registry name the client asked for
+        # (e.g. "demo-gpt"); `kwargs["model"]` is the resolved upstream deployment
+        # ("gpt-4o-mini"). Attribute usage/cost to the public name.
+        model = meta.get("model_group") or kwargs.get("model", "unknown")
         session = open_session()
         try:
             record_usage(
@@ -77,10 +99,16 @@ class AIGatewayLogger(CustomLogger):
                 key_id=scope["key_id"],
                 team_id=scope["team_id"],
                 org_id=scope["org_id"],
-                model=kwargs.get("model", "unknown"),
+                model=model,
                 prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
                 completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
             )
             session.commit()
         finally:
             session.close()
+
+
+# Module-level CustomLogger instance the LiteLLM proxy loads via
+# ``litellm_settings.callbacks`` (see services/config_compiler.py and
+# doc/metering-writeback.md). This is what wires live per-request metering.
+aigw_logger = AIGatewayLogger()

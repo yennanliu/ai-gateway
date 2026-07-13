@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from governance_api.db.models import Policy
 from governance_api.services.config_compiler import (
+    CALLBACK_INSTANCE_PATH,
     CUSTOM_AUTH_PATH,
     compile_config,
     compile_for_org,
@@ -27,6 +28,8 @@ def test_compile_maps_provider_and_model(db: Session) -> None:
     # Secret is a reference, never plaintext.
     assert entry["litellm_params"]["api_key"] == "os.environ/OPENAI_API_KEY"
     assert config["general_settings"]["custom_auth"] == CUSTOM_AUTH_PATH
+    # The success-callback logger must be wired so live requests get metered.
+    assert config["litellm_settings"]["callbacks"] == [CALLBACK_INSTANCE_PATH]
 
 
 def test_compile_includes_api_base_and_limits(db: Session) -> None:

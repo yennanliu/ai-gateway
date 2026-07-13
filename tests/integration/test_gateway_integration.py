@@ -127,13 +127,17 @@ async def test_success_event_meters_and_updates_budget(
         ).scalar_one()
         before = org_budget.spent
 
+    # Success-event kwargs as the real LiteLLM proxy emits them: scope flattened
+    # into user_api_key_* keys, the public model name in model_group, and the
+    # resolved upstream deployment in kwargs["model"]. See doc/metering-writeback.md.
     kwargs = {
-        "model": "demo-gpt",
+        "model": "gpt-4o-mini",
         "litellm_params": {
             "metadata": {
-                "user_api_key_auth": FakeAuth(
-                    team_id=gateway.platform_team_id, org_id=gateway.org_id, api_key="k1"
-                )
+                "user_api_key_org_id": gateway.org_id,
+                "user_api_key_team_id": gateway.platform_team_id,
+                "user_api_key_alias": "k1",
+                "model_group": "demo-gpt",
             }
         },
     }
@@ -259,7 +263,17 @@ async def test_full_request_lifecycle_through_all_seams(
     assert STUB_REPLY in resp.choices[0].message.content
 
     # 4) metering: the spend is written back into the control-plane DB for this key.
-    kwargs = {"model": "demo-gpt", "litellm_params": {"metadata": {"user_api_key_auth": auth}}}
+    kwargs = {
+        "model": "gpt-4o-mini",
+        "litellm_params": {
+            "metadata": {
+                "user_api_key_org_id": ctx.org_id,
+                "user_api_key_team_id": ctx.team_id,
+                "user_api_key_alias": ctx.key_id,
+                "model_group": "demo-gpt",
+            }
+        },
+    }
     await logger.async_log_success_event(kwargs, resp, None, None)
 
     with gateway.new_session() as session:

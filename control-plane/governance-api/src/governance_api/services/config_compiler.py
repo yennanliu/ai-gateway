@@ -17,6 +17,11 @@ from governance_api.db.models import ModelDeployment, Policy, ProviderCredential
 
 # LiteLLM custom-auth entrypoint (dotted path) our proxy loads.
 CUSTOM_AUTH_PATH = "hooks.auth.user_api_key_auth"
+# LiteLLM success-callback logger: a dotted path to a CustomLogger *instance*
+# (hooks.callbacks.aigw_logger) that writes a UsageRecord back into our DB after
+# every completion. Without this the proxy authenticates requests but never
+# meters them — see doc/metering-writeback.md.
+CALLBACK_INSTANCE_PATH = "hooks.callbacks.aigw_logger"
 DEFAULT_ROUTING_STRATEGY = "simple-shuffle"
 DEFAULT_NUM_RETRIES = 2
 
@@ -72,6 +77,7 @@ def compile_config(
     return {
         "model_list": model_list,
         "router_settings": router_settings,
+        "litellm_settings": {"callbacks": [CALLBACK_INSTANCE_PATH]},
         "general_settings": {"custom_auth": CUSTOM_AUTH_PATH},
     }
 
