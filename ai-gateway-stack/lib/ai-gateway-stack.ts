@@ -48,6 +48,12 @@ export class AiGatewayStack extends Stack {
     // Container-local config path ("instance memory") — /tmp is always writable.
     const configPath = '/tmp/litellm.config.yaml';
 
+    // Data safety: Phase 1 defaults to a disposable stack (DESTROY) so
+    // `cdk destroy -c version=vN` cleans up fully. Pass `-c retainData=true`
+    // for anything real — the DB is then kept on delete (SNAPSHOT) with
+    // deletion protection on.
+    const retainData = Boolean(this.node.tryGetContext('retainData'));
+
     // Ports each plane listens on (mirrors docker-compose).
     const CONTROL_PORT = 8080;
     const DATA_PORT = 4000;
@@ -99,8 +105,9 @@ export class AiGatewayStack extends Stack {
       multiAz: false, // single-AZ in Phase 1; Multi-AZ in prod
       storageEncrypted: true,
       backupRetention: Duration.days(1),
-      deleteAutomatedBackups: true,
-      removalPolicy: RemovalPolicy.DESTROY, // dev; SNAPSHOT/RETAIN in prod
+      deleteAutomatedBackups: !retainData,
+      deletionProtection: retainData,
+      removalPolicy: retainData ? RemovalPolicy.SNAPSHOT : RemovalPolicy.DESTROY,
     });
     const dbSecret = db.secret!;
 
@@ -154,9 +161,11 @@ export class AiGatewayStack extends Stack {
 
     // Inner commands come straight from each Dockerfile's CMD; we prepend the
     // DATABASE_URL assembly, and (data plane) a self-compile of the config.
+    // `exec` the final process so uvicorn (via uv) becomes the container's PID 1
+    // and receives ECS SIGTERM for graceful shutdown during rolls/scale-in.
     const controlCmd =
       'uv run --package governance-api alembic -c control-plane/governance-api/alembic.ini upgrade head && ' +
-      'uv run --package governance-api uvicorn governance_api.main:app --host 0.0.0.0 --port ' + CONTROL_PORT;
+      'exec uv run --package governance-api uvicorn governance_api.main:app --host 0.0.0.0 --port ' + CONTROL_PORT;
     // Compile the LiteLLM config from the DB, then start the proxy. If the
     // registry is empty (fresh deploy) the compile still writes an empty
     // model_list and the entrypoint's fallback wires custom_auth, so the proxy
@@ -181,7 +190,7 @@ export class AiGatewayStack extends Stack {
       },
       secrets: dbSecrets,
       entryPoint: ['/bin/sh', '-c'],
-      command: [`${exportDbUrl} && exec sh -c '${controlCmd}'`],
+      command: [`${exportDbUrl} && ${controlCmd}`],
       healthCheckGracePeriod: Duration.seconds(120),
     });
 
@@ -285,7 +294,7 @@ export class AiGatewayStack extends Stack {
       priority: 20,
       conditions: [
         elbv2.ListenerCondition.pathPatterns([
-          '/v1/*', '/health/*', '/models', '/chat/*', '/embeddings',
+          '/v1/*', '/health/*', '/models*', '/chat/*', '/embeddings*',
         ]),
       ],
       targetGroups: [dataTg],
