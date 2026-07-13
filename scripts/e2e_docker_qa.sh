@@ -25,7 +25,10 @@ PROXY=http://localhost:4000
 WORKDIR="$(mktemp -d)"
 cleanup() {
   "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
-  rm -rf "$WORKDIR"
+  # Defensive: only rm -rf a non-empty, existing dir (guards future refactors).
+  if [ -n "${WORKDIR:-}" ] && [ -d "$WORKDIR" ]; then
+    rm -rf "$WORKDIR"
+  fi
 }
 trap cleanup EXIT
 
