@@ -263,19 +263,28 @@ tok_total() { # sum of .completion_tokens across the usage rows in file $1
   fi
 }
 section "Data plane: streaming completion meters token usage"
+stream_chat() { # <key> <model>
+  http POST "$PROXY/v1/chat/completions" -H "Authorization: Bearer $1" "${JSON[@]}" \
+    -d "{\"model\":\"$2\",\"stream\":true,\"messages\":[{\"role\":\"user\",\"content\":\"stream please\"}]}"
+}
 http GET "$GOV/api/v1/usage?group_by=model" "${ADMIN[@]}"
 TOK_BEFORE=$(tok_total "$LAST_BODY")
-http POST "$PROXY/v1/chat/completions" -H "Authorization: Bearer $KEY" "${JSON[@]}" \
-  -d '{"model":"demo-gpt","stream":true,"messages":[{"role":"user","content":"stream please"}]}'
-assert_code "streaming completion returns 200" 200
+# OpenAI-shaped stream carries an explicit [DONE] + usage chunk.
+stream_chat "$KEY" "demo-gpt"
+assert_code "streaming demo-gpt returns 200" 200
 assert_body "  stream terminates with [DONE]" '\[DONE\]'
 assert_body "  stream carries usage tokens" '"total_tokens"'
+# All three families stream offline (SSE) via the multi-shape stub.
+stream_chat "$KEY" "demo-claude"
+assert_code "streaming demo-claude (Anthropic SSE) returns 200" 200
+stream_chat "$KEY" "demo-gemini"
+assert_code "streaming demo-gemini (Gemini SSE) returns 200" 200
 http GET "$GOV/api/v1/usage?group_by=model" "${ADMIN[@]}"
 TOK_AFTER=$(tok_total "$LAST_BODY")
 if [ "${TOK_AFTER:-0}" -gt "${TOK_BEFORE:-0}" ]; then
-  ok "streamed call metered completion tokens (before=$TOK_BEFORE after=$TOK_AFTER)"
+  ok "streamed calls metered completion tokens (before=$TOK_BEFORE after=$TOK_AFTER)"
 else
-  ko "streamed call did not meter tokens (before=$TOK_BEFORE after=$TOK_AFTER)"
+  ko "streamed calls did not meter tokens (before=$TOK_BEFORE after=$TOK_AFTER)"
 fi
 
 http GET "$GOV/api/v1/invoices" "${ADMIN[@]}"

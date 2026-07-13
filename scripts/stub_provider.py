@@ -12,6 +12,11 @@ POSTs the matching request; we branch on the request *path*:
     .../models/<m>:generateContent ..... Google Gemini        (provider "gemini")
     everything else (/v1/chat/...) ..... OpenAI chat.completion (provider "openai")
 
+All three shapes also stream (Server-Sent Events) when the client streams —
+OpenAI/Anthropic signal it via the body's ``stream`` flag, Gemini via a
+``:streamGenerateContent`` URL — and every stream ends with token usage so
+streamed calls meter correctly.
+
 The OpenAI path echoes the received user text back in the reply content, so an
 input guardrail (e.g. PII redaction) is observable end to end: send an email,
 and the reply shows ``[REDACTED:email]`` rather than the address.
@@ -118,6 +123,80 @@ def _openai_stream_chunks(received: str) -> list[dict[str, Any]]:
     ]
 
 
+def _openai_stream_sse(received: str) -> bytes:
+    lines = [f"data: {json.dumps(c)}\n\n" for c in _openai_stream_chunks(received)]
+    lines.append("data: [DONE]\n\n")
+    return "".join(lines).encode()
+
+
+def _anthropic_stream_sse(received: str) -> bytes:
+    """Anthropic Messages streaming events. Usage rides on message_start
+    (input_tokens) and message_delta (output_tokens)."""
+    text = f"{_MARKER} (anthropic)"
+    events = [
+        (
+            "message_start",
+            {
+                "type": "message_start",
+                "message": {
+                    "id": "msg_stub",
+                    "type": "message",
+                    "role": "assistant",
+                    "model": "claude-sonnet-5",
+                    "content": [],
+                    "stop_reason": None,
+                    "usage": {"input_tokens": 8, "output_tokens": 0},
+                },
+            },
+        ),
+        (
+            "content_block_start",
+            {
+                "type": "content_block_start",
+                "index": 0,
+                "content_block": {"type": "text", "text": ""},
+            },
+        ),
+        (
+            "content_block_delta",
+            {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": {"type": "text_delta", "text": text},
+            },
+        ),
+        ("content_block_stop", {"type": "content_block_stop", "index": 0}),
+        (
+            "message_delta",
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": "end_turn"},
+                "usage": {"output_tokens": 7},
+            },
+        ),
+        ("message_stop", {"type": "message_stop"}),
+    ]
+    return "".join(f"event: {name}\ndata: {json.dumps(d)}\n\n" for name, d in events).encode()
+
+
+def _gemini_stream_sse(received: str) -> bytes:
+    """Gemini streamGenerateContent (alt=sse). One complete GenerateContentResponse
+    chunk carrying content, finishReason and usageMetadata — the stub doesn't need
+    to fragment, and a single well-formed chunk is what the adapter parses cleanly."""
+    text = f"{_MARKER} (gemini)"
+    chunk = {
+        "candidates": [
+            {
+                "content": {"role": "model", "parts": [{"text": text}]},
+                "finishReason": "STOP",
+                "index": 0,
+            }
+        ],
+        "usageMetadata": {"promptTokenCount": 8, "candidatesTokenCount": 7, "totalTokenCount": 15},
+    }
+    return f"data: {json.dumps(chunk)}\n\n".encode()
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args: object) -> None:
         pass
@@ -132,20 +211,31 @@ class Handler(BaseHTTPRequestHandler):
         if not isinstance(body, dict):
             body = {}
 
+        # Match case-insensitively: Gemini's streaming verb is ":streamGenerateContent"
+        # (capital G), so a plain "generateContent" substring test misses the stream
+        # URL and would wrongly fall through to the OpenAI branch.
         path = self.path
-        # Streaming is implemented for the OpenAI shape (the streamed-metering
-        # demo target); Anthropic/Gemini fall back to a single response.
-        if body.get("stream") and "generateContent" not in path and "/messages" not in path:
-            self._write_openai_stream(_received_text(body))
-            return
-
-        if "generateContent" in path:
-            payload = _gemini_body()
+        lpath = path.lower()
+        received = _received_text(body)
+        stream = bool(body.get("stream"))
+        # Streaming: all three families emit SSE (Gemini signals it via a
+        # streamGenerateContent URL; OpenAI/Anthropic via the body's stream flag).
+        if "generatecontent" in lpath:
+            if "streamgeneratecontent" in lpath:
+                self._write_sse(_gemini_stream_sse(received))
+            else:
+                self._write_json(_gemini_body())
         elif path.rstrip("/").endswith("/messages") or "/v1/messages" in path:
-            payload = _anthropic_body()
+            if stream:
+                self._write_sse(_anthropic_stream_sse(received))
+            else:
+                self._write_json(_anthropic_body())
+        elif stream:
+            self._write_sse(_openai_stream_sse(received))
         else:
-            payload = _openai_body(_received_text(body))
+            self._write_json(_openai_body(received))
 
+    def _write_json(self, payload: dict[str, Any]) -> None:
         data = json.dumps(payload).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
@@ -153,15 +243,12 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def _write_openai_stream(self, received: str) -> None:
+    def _write_sse(self, data: bytes) -> None:
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
         self.end_headers()
-        for chunk in _openai_stream_chunks(received):
-            self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
-            self.wfile.flush()
-        self.wfile.write(b"data: [DONE]\n\n")
+        self.wfile.write(data)
         self.wfile.flush()
 
 
