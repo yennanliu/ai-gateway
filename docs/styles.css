@@ -631,6 +631,18 @@ figure.shot figcaption { font-size: 13px; color: var(--text-dim); margin-top: 10
 .hint strong { color: var(--text); font-weight: 500; }
 .hint code { font-size: 12.5px; }
 
+/* part divider */
+.guide-part { margin: 72px 0 8px; padding-top: 40px; border-top: 1px solid var(--border); }
+.guide-part-kicker {
+  display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; margin-bottom: 12px;
+  background: var(--grad-accent); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.guide-part h2 { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+.guide-part p { color: var(--text-muted); font-size: 17px; margin-top: 12px; }
+.guide-part + .step-block { border-top: 0; margin-top: 24px; padding-top: 0; }
+
 /* guide footer nav */
 .guide-next {
   display: flex; flex-wrap: wrap; gap: 14px; margin-top: 48px; padding-top: 32px;

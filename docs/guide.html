@@ -70,7 +70,7 @@
 
     <!-- ============ SIDEBAR TOC ============ -->
     <aside class="guide-toc">
-      <div class="guide-toc-title">On this page</div>
+      <div class="guide-toc-title">Getting started</div>
       <ol>
         <li><a href="#start">Start the gateway</a></li>
         <li><a href="#signin">Sign in to the console</a></li>
@@ -82,6 +82,13 @@
         <li><a href="#usage">Track usage &amp; cost</a></li>
         <li><a href="#budgets">Set a budget</a></li>
         <li><a href="#api">Use the API directly</a></li>
+      </ol>
+      <div class="guide-toc-title" style="margin-top:22px">A key's lifecycle</div>
+      <ol start="11">
+        <li><a href="#life-issue">Issue a key from the API</a></li>
+        <li><a href="#life-sdk">Call it from your app</a></li>
+        <li><a href="#life-monitor">Watch usage climb</a></li>
+        <li><a href="#life-revoke">Switch the key off</a></li>
       </ol>
     </aside>
 
@@ -276,6 +283,152 @@ curl <span class="c-str">http://localhost:4000/v1/chat/completions</span> \
           <button class="copy-btn" aria-label="Copy">Copy</button>
           <pre><code>curl -s <span class="c-str">http://localhost:8080/api/v1/version</span>
 <span class="c-cmt"># → {"version":"0.1.0","litellm":"1.91.1"}</span></code></pre>
+        </div>
+
+      </section>
+
+      <!-- ===== PART 2: a key's lifecycle ===== -->
+      <div class="guide-part">
+        <span class="guide-part-kicker">Part 2</span>
+        <h2>A virtual key's lifecycle</h2>
+        <p>The same story end to end, driven from the API: mint a key, use it from your own app, watch the
+          spend it produces, then switch it off and confirm it stops working — the moment you revoke, the data
+          plane rejects it, because the control-plane DB is the single source of truth.</p>
+      </div>
+
+      <!-- 11 -->
+      <section class="step-block" id="life-issue">
+        <div class="step-head"><span class="step-num">11</span><h2>Issue a key from the API</h2></div>
+        <p>Create a key scoped to a team (and optionally restricted to specific models). The full key is
+          returned <strong>once</strong>, in the <code>key</code> field — store it now; afterwards only the
+          <code>prefix</code> and a hash remain.</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>curl -s <span class="c-str">http://localhost:8080/api/v1/keys</span> \
+  -H <span class="c-str">"X-User-Id: admin"</span> -H <span class="c-str">"X-Org-Id: $ORG_ID"</span> -H <span class="c-str">"X-Org-Roles: org-admin"</span> \
+  -H <span class="c-str">"Content-Type: application/json"</span> \
+  -d <span class="c-str">'{"team_id": "&lt;platform-team-id&gt;", "allowed_models": ["demo-gpt"]}'</span></code></pre>
+        </div>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>{
+  "id": "f17cf5df…", "prefix": "sk-ag-uSRx-2mz", "status": "active",
+  "allowed_models": ["demo-gpt"],
+  "key": "sk-ag-uSRx-2mzGYw_…"          <span class="c-cmt"># shown once — copy it now</span>
+}</code></pre>
+        </div>
+        <div class="hint">
+          <span class="hint-ic">💡</span>
+          <p>Need the team id? <code>GET /api/v1/teams?org_id=$ORG_ID</code> lists them, or read it off the
+            <strong>Teams</strong> page (step 5).</p>
+        </div>
+      </section>
+
+      <!-- 12 -->
+      <section class="step-block" id="life-sdk">
+        <div class="step-head"><span class="step-num">12</span><h2>Call it from your app</h2></div>
+        <p>Because the proxy is OpenAI-compatible, you don't need a new SDK — point the official OpenAI client
+          at the gateway and pass the virtual key. Nothing else in your code changes.</p>
+        <p><strong>Python</strong></p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code><span class="c-cmt"># pip install openai</span>
+from openai import OpenAI
+
+client = OpenAI(
+    base_url=<span class="c-str">"http://localhost:4000/v1"</span>,   <span class="c-cmt"># the gateway, not api.openai.com</span>
+    api_key=<span class="c-str">"sk-ag-uSRx-2mzGYw_…"</span>,         <span class="c-cmt"># your virtual key</span>
+)
+
+resp = client.chat.completions.create(
+    model=<span class="c-str">"demo-gpt"</span>,                        <span class="c-cmt"># the public registry name</span>
+    messages=[{<span class="c-str">"role"</span>: <span class="c-str">"user"</span>, <span class="c-str">"content"</span>: <span class="c-str">"Say hello"</span>}],
+)
+print(resp.choices[0].message.content)</code></pre>
+        </div>
+        <p><strong>JavaScript / TypeScript</strong></p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code><span class="c-cmt">// npm i openai</span>
+import OpenAI from <span class="c-str">"openai"</span>;
+
+const client = new OpenAI({
+  baseURL: <span class="c-str">"http://localhost:4000/v1"</span>,
+  apiKey: <span class="c-str">"sk-ag-uSRx-2mzGYw_…"</span>,
+});
+
+const r = await client.chat.completions.create({
+  model: <span class="c-str">"demo-gpt"</span>,
+  messages: [{ role: <span class="c-str">"user"</span>, content: <span class="c-str">"Say hello"</span> }],
+});
+console.log(r.choices[0].message.content);</code></pre>
+        </div>
+      </section>
+
+      <!-- 13 -->
+      <section class="step-block" id="life-monitor">
+        <div class="step-head"><span class="step-num">13</span><h2>Watch usage climb</h2></div>
+        <p>Every successful call is metered, priced, and attributed to the calling key — you can see the numbers
+          move. Ask the usage endpoint to group by <code>key</code> before and after a few requests:</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>curl -s <span class="c-str">"http://localhost:8080/api/v1/usage?group_by=key"</span> \
+  -H <span class="c-str">"X-User-Id: admin"</span> -H <span class="c-str">"X-Org-Id: $ORG_ID"</span> -H <span class="c-str">"X-Org-Roles: org-admin"</span></code></pre>
+        </div>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code><span class="c-cmt"># after 5 completions with this key — a row attributed to its id:</span>
+[
+  { "group": "f17cf5df…", "requests": 5,
+    "prompt_tokens": 40, "completion_tokens": 35, "cost": "0.037500" }
+]</code></pre>
+        </div>
+        <p>The console shows the same, rolled up by model on the <strong>Usage</strong> page — here <code>demo-gpt</code>
+          reflects the live calls on top of the seeded totals:</p>
+        <figure class="shot">
+          <div class="frame"><img src="assets/guide/10-usage-live.png" alt="Usage page showing demo-gpt with 15 requests and $1.5375 after live calls, above seeded rows" loading="lazy" /></div>
+          <figcaption>Usage after live traffic — <code>demo-gpt</code> requests and cost have grown.</figcaption>
+        </figure>
+        <div class="hint">
+          <span class="hint-ic">📈</span>
+          <p>Cost comes from the org's <strong>rate card</strong> for that model; with no card the request is
+            still counted, at zero cost. See <a href="https://github.com/yennanliu/ai-gateway/blob/main/doc/metering-writeback.md" target="_blank" rel="noopener">metering-writeback.md</a>
+            for how the write-back works.</p>
+        </div>
+      </section>
+
+      <!-- 14 -->
+      <section class="step-block" id="life-revoke">
+        <div class="step-head"><span class="step-num">14</span><h2>Switch the key off</h2></div>
+        <p>Revoke the key through the control plane. It flips to <code>revoked</code> immediately — the console
+          shows it greyed out with the revoke action disabled:</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>curl -s -X POST <span class="c-str">"http://localhost:8080/api/v1/keys/&lt;key-id&gt;/revoke"</span> \
+  -H <span class="c-str">"X-User-Id: admin"</span> -H <span class="c-str">"X-Org-Id: $ORG_ID"</span> -H <span class="c-str">"X-Org-Roles: org-admin"</span>
+<span class="c-cmt"># → {"id":"f17cf5df…","status":"revoked", …}</span></code></pre>
+        </div>
+        <figure class="shot">
+          <div class="frame"><img src="assets/guide/09-keys-revoked.png" alt="Virtual keys table showing one key with a red revoked status and a disabled revoke button" loading="lazy" /></div>
+          <figcaption>The revoked key, greyed out in the console.</figcaption>
+        </figure>
+        <p>Now send the <em>same</em> request again. The data plane calls back into the control-plane DB on every
+          request, so the very next call is rejected — no provider is ever contacted:</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>curl -s http://localhost:4000/v1/chat/completions \
+  -H <span class="c-str">"Authorization: Bearer sk-ag-uSRx-2mzGYw_…"</span> \
+  -H <span class="c-str">"Content-Type: application/json"</span> \
+  -d <span class="c-str">'{"model":"demo-gpt","messages":[{"role":"user","content":"hi"}]}'</span>
+
+<span class="c-cmt"># → HTTP 401</span>
+{ "error": { "message": "API key is revoked", "type": "auth_error", "code": "401" } }</code></pre>
+        </div>
+        <div class="hint">
+          <span class="hint-ic">🛡️</span>
+          <p>A <strong>revoked</strong> key returns <code>API key is revoked</code>; a key that never existed
+            returns <code>invalid API key</code>. Both are <code>401</code>, decided by our DB — never by a
+            copy inside the proxy.</p>
         </div>
 
         <div class="guide-next">
