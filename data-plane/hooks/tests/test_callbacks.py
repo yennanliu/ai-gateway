@@ -25,6 +25,7 @@ class FakeAuth:
     team_id: str | None = None
     org_id: str | None = None
     api_key: str | None = None
+    key_alias: str | None = None
     rpm_limit: int | None = None
 
 
@@ -54,6 +55,13 @@ def test_scope_from_reads_fields_and_handles_none() -> None:
         "key_id": "k",
     }
     assert scope_from(None) == {"team_id": None, "org_id": None, "key_id": None}
+
+
+def test_scope_from_prefers_key_alias_for_key_id() -> None:
+    # key_alias carries OUR internal key id; it must win over api_key (plaintext),
+    # else key-scoped budgets never match. Falls back to api_key when alias absent.
+    assert scope_from(FakeAuth(api_key="plaintext", key_alias="kid-1"))["key_id"] == "kid-1"
+    assert scope_from(FakeAuth(api_key="plaintext", key_alias=None))["key_id"] == "plaintext"
 
 
 def test_scope_from_logging_metadata_reads_flattened_keys() -> None:
@@ -116,6 +124,25 @@ async def test_pre_call_blocks_over_budget(db: Session, monkeypatch: pytest.Monk
     with pytest.raises(HTTPException) as exc:
         await logger.async_pre_call_hook(
             FakeAuth(team_id=team.id, org_id=org.id, api_key="k1"),
+            None,
+            {"messages": [{"role": "user", "content": "hi"}]},
+            "completion",
+        )
+    assert exc.value.status_code == 402
+
+
+async def test_pre_call_blocks_over_key_budget(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A key-scoped budget must be enforced via key_alias (our id), not api_key.
+    org, team = _org_team(db)
+    db.add(Budget(scope_type="key", scope_id="kid-1", limit=Decimal("5"), spent=Decimal("5")))
+    db.commit()
+    monkeypatch.setattr(callbacks, "open_session", _fresh_session_factory(db))
+    logger = AIGatewayLogger()
+    with pytest.raises(HTTPException) as exc:
+        await logger.async_pre_call_hook(
+            FakeAuth(team_id=team.id, org_id=org.id, api_key="plaintext", key_alias="kid-1"),
             None,
             {"messages": [{"role": "user", "content": "hi"}]},
             "completion",

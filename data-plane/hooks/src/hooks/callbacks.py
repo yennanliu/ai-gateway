@@ -24,11 +24,19 @@ def messages_text(messages: list[dict[str, Any]]) -> str:
 
 
 def scope_from(user_api_key_dict: Any) -> dict[str, str | None]:
-    """Extract our scope fields from LiteLLM's auth object (pre-call path)."""
+    """Extract our scope fields from LiteLLM's auth object (pre-call path).
+
+    ``key_id`` must be OUR internal key id, which the custom-auth adapter stamps
+    onto ``key_alias`` (``api_key`` is the plaintext/hashed token, not our id).
+    Reading the wrong field silently breaks key-scoped budget enforcement — the
+    lookup compares against ``Budget.scope_id`` (our id). Mirror the success path
+    (``scope_from_logging_metadata``). See doc/metering-writeback.md.
+    """
     return {
         "team_id": getattr(user_api_key_dict, "team_id", None),
         "org_id": getattr(user_api_key_dict, "org_id", None),
-        "key_id": getattr(user_api_key_dict, "api_key", None),
+        "key_id": getattr(user_api_key_dict, "key_alias", None)
+        or getattr(user_api_key_dict, "api_key", None),
     }
 
 

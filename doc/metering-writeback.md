@@ -119,9 +119,16 @@ Unit coverage:
 ## Caveats / follow-ups
 
 - **Enforcement is separate.** This is post-call *accounting*. Live
-  budget/rate-limit *enforcement* runs in `async_pre_call_hook`
+  budget/rate-limit/guardrail *enforcement* runs in `async_pre_call_hook`
   (`hooks.enforcement`); a revoked key is already rejected by custom-auth on the
-  next request (the source-of-truth invariant).
+  next request (the source-of-truth invariant). The pre-call hook rides on the
+  same callback instance as metering, so wiring `litellm_settings.callbacks`
+  activated both. Two attribution bugs that made it silently pass-through were
+  fixed alongside: `scope_from` must read our key id from `key_alias` (not the
+  plaintext `api_key`) or key-scoped budgets never match, and `rpm_limit` must be
+  stamped onto the auth object in `hooks/auth.py` or the rate-limit leg is dead.
+  All three controls are asserted end-to-end in `scripts/e2e_docker_qa.sh`
+  (402 over-budget, 429 rate-limit, 400 injection-guardrail).
 - **Cost needs a rate card.** With no `RateCard` for the org+model the row is
   still written, with `cost = 0`.
 - **Streaming.** Verify token usage is present on streamed responses (LiteLLM
