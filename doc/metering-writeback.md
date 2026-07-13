@@ -129,10 +129,17 @@ Unit coverage:
   stamped onto the auth object in `hooks/auth.py` or the rate-limit leg is dead.
   All three controls are asserted end-to-end in `scripts/e2e_docker_qa.sh`
   (402 over-budget, 429 rate-limit, 400 injection-guardrail).
+- **Redaction rewrites the request.** A `pii: redact` input guardrail now
+  substitutes the outbound `data["messages"]` in `async_pre_call_hook` (via
+  `enforce_pre_call_messages`), not just a metadata copy — so the redacted text
+  is what reaches the provider.
 - **Cost needs a rate card.** With no `RateCard` for the org+model the row is
-  still written, with `cost = 0`.
-- **Streaming.** Verify token usage is present on streamed responses (LiteLLM
-  provides usage on the final chunk); if absent, tokens may under-count.
+  still written, with `cost = 0`; metering now logs a `WARNING` so that silent
+  zero-cost billing is visible.
+- **Streaming.** The pre-call hook forces `stream_options.include_usage=true` on
+  streamed requests so providers return usage on the final chunk; without it a
+  streamed call would meter zero tokens. Asserted by a token-delta check in
+  `scripts/e2e_docker_qa.sh`.
 - When bumping LiteLLM, re-check the `user_api_key_*` / `model_group` metadata
   keys and `get_instance_fn`'s file-relative resolution alongside the other
   seams (see `COMPATIBLE_LITELLM` in `config.py`).

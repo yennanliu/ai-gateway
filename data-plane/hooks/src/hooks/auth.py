@@ -44,6 +44,12 @@ def _expired(expires_at: datetime | None) -> bool:
 def authenticate(
     session: Session, plaintext: str, requested_model: str | None = None
 ) -> AuthContext:
+    # A fully-absent credential reaches us as None/"" (LiteLLM still calls
+    # custom-auth when no Authorization header is present). Treat it as an auth
+    # failure (401) rather than letting hash_key(None) raise AttributeError,
+    # which LiteLLM would surface as a 500. See scripts/e2e_docker_qa.sh.
+    if not plaintext:
+        raise AuthError("no API key provided")
     key = session.execute(
         select(VirtualKey).where(VirtualKey.hashed_key == hash_key(plaintext))
     ).scalar_one_or_none()

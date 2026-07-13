@@ -68,7 +68,7 @@ def test_seeded_key_authenticates(gateway: Gateway) -> None:
         ctx = authenticate(session, gateway.key)
     assert ctx.org_id == gateway.org_id
     assert ctx.team_id == gateway.platform_team_id
-    assert set(ctx.allowed_models) == {"demo-gpt", "demo-gpt-4o"}
+    assert set(ctx.allowed_models) == {"demo-gpt", "demo-gpt-4o", "demo-claude", "demo-gemini"}
 
 
 def test_unknown_key_is_rejected(gateway: Gateway) -> None:
@@ -106,9 +106,9 @@ def test_expired_key_is_rejected(gateway: Gateway) -> None:
 
 def test_model_scope_is_enforced(gateway: Gateway) -> None:
     with gateway.new_session() as session:
-        # demo-claude is outside the seeded key's allowed_models -> rejected
+        # a model outside the seeded key's allowed_models -> rejected
         with pytest.raises(AuthError, match="not allowed"):
-            authenticate(session, gateway.key, requested_model="demo-claude")
+            authenticate(session, gateway.key, requested_model="demo-forbidden")
         # an in-scope model still passes
         ctx = authenticate(session, gateway.key, requested_model="demo-gpt")
         assert ctx.team_id == gateway.platform_team_id
@@ -186,7 +186,7 @@ async def test_pre_call_allows_under_budget_team(
     result = await AIGatewayLogger().async_pre_call_hook(
         auth, None, {"messages": [{"role": "user", "content": "hello"}]}, "completion"
     )
-    assert result["metadata"]["aigw_input"] == "hello"
+    assert result["messages"] == [{"role": "user", "content": "hello"}]
 
 
 async def test_pre_call_blocks_prompt_injection(
@@ -212,7 +212,8 @@ async def test_pre_call_redacts_pii(gateway: Gateway, monkeypatch: pytest.Monkey
     result = await AIGatewayLogger().async_pre_call_hook(
         auth, None, {"messages": [{"role": "user", "content": "email me at a@b.com"}]}, "completion"
     )
-    redacted = result["metadata"]["aigw_input"]
+    # Redaction now rewrites the OUTBOUND messages, not a metadata copy.
+    redacted = result["messages"][0]["content"]
     assert "a@b.com" not in redacted and "[REDACTED:email]" in redacted
 
 

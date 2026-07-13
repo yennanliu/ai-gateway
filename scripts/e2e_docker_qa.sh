@@ -173,6 +173,15 @@ assert_body "  routed to stub upstream" 'Hello from the AI Gateway stub'
 assert_body "  response carries usage tokens" '"total_tokens":'
 chat "$KEY" "demo-gpt-4o"
 assert_code "chat completion demo-gpt-4o (seeded key)" 200
+# All three provider families route offline against the multi-shape stub:
+# OpenAI (above), Anthropic (/v1/messages), and Gemini (:generateContent). Before
+# the stub spoke those wire shapes, demo-claude 500'd with APIConnectionError.
+chat "$KEY" "demo-claude"
+assert_code "chat completion demo-claude via Anthropic adapter (200)" 200
+assert_body "  anthropic-shaped stub reply parsed" 'Hello from the AI Gateway stub'
+chat "$KEY" "demo-gemini"
+assert_code "chat completion demo-gemini via Gemini adapter (200)" 200
+assert_body "  gemini-shaped stub reply parsed" 'Hello from the AI Gateway stub'
 
 section "Data plane: /v1/models through the proxy"
 http GET "$PROXY/v1/models" -H "Authorization: Bearer $KEY"
@@ -182,12 +191,13 @@ assert_body "  proxy advertises demo-gpt" 'demo-gpt'
 section "Data plane: authentication is enforced"
 chat "sk-ag-bogus-key" "demo-gpt"
 assert_code "unknown key is rejected" 401
-# A request with no Authorization header must never yield a completion. (LiteLLM
-# currently answers a fully-absent credential with 500 rather than routing it to
-# our custom-auth, so assert the security property -- rejected -- not the code.)
+# A request with no Authorization header must be rejected with 401. LiteLLM still
+# routes an absent credential to our custom-auth (with an empty key); hooks/auth.py
+# guards the empty/None case as an AuthError so it maps to 401 instead of a 500
+# from hash_key(None). See test_hook_auth.py::test_adapter_rejects_absent_key_with_401.
 http POST "$PROXY/v1/chat/completions" "${JSON[@]}" \
   -d '{"model":"demo-gpt","messages":[{"role":"user","content":"hi"}]}'
-assert_rejected "missing Authorization header yields no completion"
+assert_code "missing Authorization header is rejected (401)" 401
 
 # ---- CROSS-PLANE: issue -> use -> revoke -> reject ---------------------------
 section "Cross-plane: control-plane key lifecycle enforced by the data plane"
@@ -241,6 +251,33 @@ if [ "${AFTER_REQ:-0}" -gt "${BEFORE_REQ:-0}" ]; then
 else
   ko "usage did not increment after a live completion (before=$BEFORE_REQ after=$AFTER_REQ)"
 fi
+# Streaming must meter TOKENS, not just count the request: the gateway forces
+# stream_options.include_usage so the provider returns usage on the final chunk.
+# Assert the completion-token total grows after a streamed call (guards against
+# streamed calls silently under-metering at zero tokens).
+tok_total() { # sum of .completion_tokens across the usage rows in file $1
+  if [ "$HAVE_JQ" = 1 ]; then
+    jq '[.[].completion_tokens] | add // 0' "$1" 2>/dev/null || echo 0
+  else
+    grep -oE '"completion_tokens":[0-9]+' "$1" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true
+  fi
+}
+section "Data plane: streaming completion meters token usage"
+http GET "$GOV/api/v1/usage?group_by=model" "${ADMIN[@]}"
+TOK_BEFORE=$(tok_total "$LAST_BODY")
+http POST "$PROXY/v1/chat/completions" -H "Authorization: Bearer $KEY" "${JSON[@]}" \
+  -d '{"model":"demo-gpt","stream":true,"messages":[{"role":"user","content":"stream please"}]}'
+assert_code "streaming completion returns 200" 200
+assert_body "  stream terminates with [DONE]" '\[DONE\]'
+assert_body "  stream carries usage tokens" '"total_tokens"'
+http GET "$GOV/api/v1/usage?group_by=model" "${ADMIN[@]}"
+TOK_AFTER=$(tok_total "$LAST_BODY")
+if [ "${TOK_AFTER:-0}" -gt "${TOK_BEFORE:-0}" ]; then
+  ok "streamed call metered completion tokens (before=$TOK_BEFORE after=$TOK_AFTER)"
+else
+  ko "streamed call did not meter tokens (before=$TOK_BEFORE after=$TOK_AFTER)"
+fi
+
 http GET "$GOV/api/v1/invoices" "${ADMIN[@]}"
 assert_code "GET /api/v1/invoices" 200
 assert_body "  invoice carries a total cost" '"total_cost":'

@@ -17,7 +17,7 @@ from hooks.callbacks import (
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from governance_api.db.models import Budget, Org, RateCard, Team, UsageRecord
+from governance_api.db.models import Budget, Org, Policy, RateCard, Team, UsageRecord
 
 
 @dataclass
@@ -112,7 +112,25 @@ async def test_pre_call_passes_clean_request(db: Session, monkeypatch: pytest.Mo
     result = await logger.async_pre_call_hook(
         FakeAuth(team_id=team.id, org_id=org.id, api_key="k1"), None, data, "completion"
     )
-    assert result["metadata"]["aigw_input"] == "hello"
+    assert result["messages"] == [{"role": "user", "content": "hello"}]
+
+
+async def test_pre_call_redacts_outbound_messages(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A pii:redact policy must rewrite the OUTBOUND messages, not a metadata copy.
+    org, team = _org_team(db)
+    db.add(Policy(scope_type="team", scope_id=team.id, guardrails={"input": {"pii": "redact"}}))
+    db.commit()
+    monkeypatch.setattr(callbacks, "open_session", _fresh_session_factory(db))
+    logger = AIGatewayLogger()
+    data = {"messages": [{"role": "user", "content": "email me at a@b.com"}]}
+    result = await logger.async_pre_call_hook(
+        FakeAuth(team_id=team.id, org_id=org.id, api_key="k1"), None, data, "completion"
+    )
+    content = result["messages"][0]["content"]
+    assert "a@b.com" not in content
+    assert "[REDACTED:email]" in content
 
 
 async def test_pre_call_blocks_over_budget(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:

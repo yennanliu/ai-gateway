@@ -42,6 +42,7 @@ _MODELS = [
     ("demo-gpt", "openai", "gpt-4o-mini", []),
     ("demo-gpt-4o", "openai", "gpt-4o", ["premium"]),
     ("demo-claude", "anthropic", "claude-sonnet-5", ["long-context", "vision"]),
+    ("demo-gemini", "gemini", "gemini-2.5-pro", ["long-context", "vision"]),
 ]
 
 
@@ -140,7 +141,14 @@ def seed(session: Session, *, stub_url: str = DEFAULT_STUB_URL) -> dict[str, Any
     anthropic_cred = _get_or_create(
         session, ProviderCredential, {"secret_ref": "STUB_KEY"}, org_id=org.id, provider="anthropic"
     )
-    cred_by_provider = {"openai": openai_cred.id, "anthropic": anthropic_cred.id}
+    gemini_cred = _get_or_create(
+        session, ProviderCredential, {"secret_ref": "STUB_KEY"}, org_id=org.id, provider="gemini"
+    )
+    cred_by_provider = {
+        "openai": openai_cred.id,
+        "anthropic": anthropic_cred.id,
+        "gemini": gemini_cred.id,
+    }
 
     # Model deployments (all point at the local stub so no real key is needed)
     for public_name, provider, model, tags in _MODELS:
@@ -191,6 +199,14 @@ def seed(session: Session, *, stub_url: str = DEFAULT_STUB_URL) -> dict[str, Any
         model="demo-claude",
         unit="1k_tokens",
     )
+    _get_or_create(
+        session,
+        RateCard,
+        {"price": Decimal("1.25")},
+        org_id=org.id,
+        model="demo-gemini",
+        unit="1k_tokens",
+    )
 
     # Org-scoped guardrail + routing policy
     _get_or_create(
@@ -229,7 +245,7 @@ def seed(session: Session, *, stub_url: str = DEFAULT_STUB_URL) -> dict[str, Any
         hashed_key=hashed,
         prefix=prefix,
         team_id=platform.id,
-        allowed_models=["demo-gpt", "demo-gpt-4o"],
+        allowed_models=["demo-gpt", "demo-gpt-4o", "demo-claude", "demo-gemini"],
     )
     session.add(key)
     session.flush()

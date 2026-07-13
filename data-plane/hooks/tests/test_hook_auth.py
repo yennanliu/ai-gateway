@@ -64,6 +64,14 @@ def test_invalid_key_rejected(db: Session) -> None:
         authenticate(db, "sk-ag-does-not-exist")
 
 
+def test_missing_key_raises_autherror_not_crash(db: Session) -> None:
+    # Absent credential (None/"") must be an AuthError -> 401, not an
+    # AttributeError from hash_key(None) that LiteLLM would surface as 500.
+    for missing in ("", None):
+        with pytest.raises(AuthError):
+            authenticate(db, missing)  # type: ignore[arg-type]
+
+
 def test_revoked_key_rejected(db: Session) -> None:
     plaintext, _, _ = _seed_key(db, status="revoked")
     with pytest.raises(AuthError, match="revoked"):
@@ -121,3 +129,14 @@ async def test_adapter_rejects_bad_key_with_401(
     with pytest.raises(HTTPException) as exc:
         await authmod.user_api_key_auth(None, "sk-ag-nope")
     assert exc.value.status_code == 401
+
+
+async def test_adapter_rejects_absent_key_with_401(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # No Authorization header -> LiteLLM calls custom-auth with None/"".
+    monkeypatch.setattr(authmod, "open_session", lambda: sessionmaker(bind=db.get_bind())())
+    for missing in ("", None):
+        with pytest.raises(HTTPException) as exc:
+            await authmod.user_api_key_auth(None, missing)  # type: ignore[arg-type]
+        assert exc.value.status_code == 401

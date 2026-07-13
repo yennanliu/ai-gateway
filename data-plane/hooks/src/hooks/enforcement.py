@@ -8,6 +8,7 @@ typed Blocked (mapped to an HTTP status by the LiteLLM adapter). Returns the
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -53,17 +54,16 @@ def resolve_policy(db: Session, ctx: ScopeContext) -> Policy | None:
     return resolve_scoped(rows, ctx)
 
 
-def enforce_pre_call(
+def _check_budget_and_rate(
     db: Session,
     counter: RateCounter,
     ctx: ScopeContext,
     *,
-    input_text: str,
     now: datetime,
-    rpm_limit: int | None = None,
-) -> str:
-    """Raise Blocked if the request is over budget, rate-limited, or fails an
-    input guardrail. Returns the (possibly redacted) input text otherwise."""
+    rpm_limit: int | None,
+) -> None:
+    """Raise Blocked(402/429) if over budget or rate-limited. Shared by both
+    the text- and message-oriented entrypoints."""
     for budget in applicable_budgets(db, ctx):
         maybe_reset(budget, now)
         if not evaluate(budget).allowed:
@@ -76,10 +76,58 @@ def enforce_pre_call(
     ):
         raise Blocked(429, "rate limit exceeded")
 
+
+def _guard_text(policy_guardrails: dict[str, Any], text: str) -> str:
+    """Run input guardrails on one string; raise Blocked(400) or return the
+    (possibly redacted) text."""
+    outcome = run_guardrails("input", policy_guardrails, text)
+    if not outcome.allowed:
+        raise Blocked(400, f"blocked by guardrail: {', '.join(outcome.reasons)}")
+    return outcome.text
+
+
+def enforce_pre_call(
+    db: Session,
+    counter: RateCounter,
+    ctx: ScopeContext,
+    *,
+    input_text: str,
+    now: datetime,
+    rpm_limit: int | None = None,
+) -> str:
+    """Raise Blocked if the request is over budget, rate-limited, or fails an
+    input guardrail. Returns the (possibly redacted) input text otherwise."""
+    _check_budget_and_rate(db, counter, ctx, now=now, rpm_limit=rpm_limit)
     policy = resolve_policy(db, ctx)
     if policy is not None:
-        outcome = run_guardrails("input", policy.guardrails, input_text)
-        if not outcome.allowed:
-            raise Blocked(400, f"blocked by guardrail: {', '.join(outcome.reasons)}")
-        return outcome.text
+        return _guard_text(policy.guardrails, input_text)
     return input_text
+
+
+def enforce_pre_call_messages(
+    db: Session,
+    counter: RateCounter,
+    ctx: ScopeContext,
+    *,
+    messages: list[dict[str, Any]],
+    now: datetime,
+    rpm_limit: int | None = None,
+) -> list[dict[str, Any]]:
+    """Message-aware enforcement for the proxy hook. Same budget/rate/guardrail
+    gates as ``enforce_pre_call``, but applies input guardrails **per message**
+    and returns messages with redacted content substituted in place — so a
+    ``pii: redact`` policy actually rewrites the outbound request (the text
+    entrypoint can only redact a flattened copy). String content is guarded;
+    non-string (multimodal) content is passed through untouched in v1."""
+    _check_budget_and_rate(db, counter, ctx, now=now, rpm_limit=rpm_limit)
+    policy = resolve_policy(db, ctx)
+    if policy is None:
+        return messages
+    guarded: list[dict[str, Any]] = []
+    for msg in messages:
+        content = msg.get("content")
+        if isinstance(content, str):
+            guarded.append({**msg, "content": _guard_text(policy.guardrails, content)})
+        else:
+            guarded.append(msg)
+    return guarded
