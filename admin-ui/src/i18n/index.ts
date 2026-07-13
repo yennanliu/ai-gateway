@@ -19,7 +19,7 @@ export function translate(locale: Locale, key: string, params?: TParams): string
   const raw = lookup(locale, key) ?? lookup("en", key) ?? key;
   if (!params) return raw;
   return raw.replace(/\{(\w+)\}/g, (_, name: string) =>
-    name in params ? String(params[name]) : `{${name}}`,
+    Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : `{${name}}`,
   );
 }
 

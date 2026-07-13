@@ -5,8 +5,12 @@ import { HTML_LANG, type Locale } from "@/i18n/messages";
 const STORAGE_KEY = "aigw.locale";
 
 function initialLocale(): Locale {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === "en" || saved === "zh-TW") return saved;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved === "en" || saved === "zh-TW") return saved;
+  } catch {
+    // localStorage disabled/restricted (private mode, sandboxed iframe) — fall through.
+  }
   // Fall back to the browser preference: any zh-Hant/zh-TW/zh-HK reader gets Traditional Chinese.
   const nav = navigator.language ?? "";
   if (/^zh\b/i.test(nav) && !/hans|cn|sg/i.test(nav)) return "zh-TW";
@@ -27,7 +31,11 @@ export const useLocaleStore = defineStore("locale", () => {
   }
 
   watch(locale, (l) => {
-    localStorage.setItem(STORAGE_KEY, l);
+    try {
+      localStorage.setItem(STORAGE_KEY, l);
+    } catch {
+      // Persistence failed (quota/restricted) — the choice still applies for this session.
+    }
     apply(l);
   });
 
