@@ -1,11 +1,30 @@
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import { RouterLink, RouterView } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useThemeStore } from "@/stores/theme";
+import { useI18n } from "@/i18n";
+import { LOCALES, type Locale } from "@/i18n/messages";
 import LandingView from "@/views/LandingView.vue";
 
 const auth = useAuthStore();
 const theme = useThemeStore();
+const { locale, setLocale } = useI18n();
+
+const langOpen = ref(false);
+const langMenu = ref<HTMLElement | null>(null);
+
+function pickLocale(l: Locale): void {
+  setLocale(l);
+  langOpen.value = false;
+}
+
+function onDocClick(e: MouseEvent): void {
+  if (langMenu.value && !langMenu.value.contains(e.target as Node)) langOpen.value = false;
+}
+
+onMounted(() => document.addEventListener("click", onDocClick));
+onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 </script>
 
 <template>
@@ -13,25 +32,49 @@ const theme = useThemeStore();
     <div class="container bar">
       <RouterLink to="/" class="wordmark">AI&nbsp;GATEWAY</RouterLink>
       <nav v-if="auth.isAuthenticated">
-        <RouterLink to="/">Dashboard</RouterLink>
-        <RouterLink to="/models">Models</RouterLink>
-        <RouterLink to="/teams">Teams</RouterLink>
-        <RouterLink to="/keys">Keys</RouterLink>
-        <RouterLink to="/usage">Usage</RouterLink>
-        <RouterLink to="/budgets">Budgets</RouterLink>
+        <RouterLink to="/">{{ $t("nav.dashboard") }}</RouterLink>
+        <RouterLink to="/models">{{ $t("nav.models") }}</RouterLink>
+        <RouterLink to="/teams">{{ $t("nav.teams") }}</RouterLink>
+        <RouterLink to="/keys">{{ $t("nav.keys") }}</RouterLink>
+        <RouterLink to="/usage">{{ $t("nav.usage") }}</RouterLink>
+        <RouterLink to="/budgets">{{ $t("nav.budgets") }}</RouterLink>
       </nav>
       <span class="spacer" />
+      <div ref="langMenu" class="lang">
+        <button
+          class="icon-toggle"
+          :title="$t('app.language')"
+          :aria-label="$t('app.language')"
+          aria-haspopup="menu"
+          :aria-expanded="langOpen"
+          @click="langOpen = !langOpen"
+        >
+          文<sub>A</sub>
+        </button>
+        <ul v-if="langOpen" class="lang-menu" role="menu">
+          <li v-for="l in LOCALES" :key="l.value" role="none">
+            <button
+              role="menuitemradio"
+              :aria-checked="locale === l.value"
+              :class="{ active: locale === l.value }"
+              @click="pickLocale(l.value)"
+            >
+              {{ l.label }}
+            </button>
+          </li>
+        </ul>
+      </div>
       <button
-        class="theme-toggle"
-        :title="theme.mode === 'dark' ? 'Switch to light' : 'Switch to dark'"
-        :aria-label="theme.mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+        class="icon-toggle"
+        :title="theme.mode === 'dark' ? $t('app.toLight') : $t('app.toDark')"
+        :aria-label="theme.mode === 'dark' ? $t('app.toLight') : $t('app.toDark')"
         @click="theme.toggle"
       >
         {{ theme.mode === "dark" ? "☀" : "☾" }}
       </button>
       <span v-if="auth.isAuthenticated" class="who">
         {{ auth.principal?.userId }} · {{ auth.principal?.orgId?.slice(0, 8) }}
-        <button class="btn btn-secondary" @click="auth.logout">Sign out</button>
+        <button class="btn btn-secondary" @click="auth.logout">{{ $t("app.signOut") }}</button>
       </span>
     </div>
   </header>
@@ -85,7 +128,7 @@ nav a.router-link-active {
 .spacer {
   flex: 1;
 }
-.theme-toggle {
+.icon-toggle {
   font: inherit;
   font-size: 15px;
   line-height: 1;
@@ -98,8 +141,49 @@ nav a.router-link-active {
   cursor: pointer;
   transition: border-color 250ms ease;
 }
-.theme-toggle:hover {
+.icon-toggle:hover {
   border-color: var(--text-dim);
+}
+.icon-toggle sub {
+  font-size: 0.7em;
+  vertical-align: sub;
+}
+.lang {
+  position: relative;
+  display: inline-flex;
+}
+.lang-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 160px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input, 10px);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+  z-index: 20;
+}
+.lang-menu button {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 15px;
+  padding: 0.5rem 0.7rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.lang-menu button:hover {
+  background: var(--bg-alt);
+}
+.lang-menu button.active {
+  font-weight: 600;
+  color: var(--accent);
 }
 .who {
   font-size: 13px;

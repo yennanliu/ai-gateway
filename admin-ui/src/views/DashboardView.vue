@@ -22,22 +22,22 @@ onMounted(async () => {
 
 <template>
   <section>
-    <h1>Dashboard</h1>
+    <h1>{{ $t("dashboard.title") }}</h1>
     <p class="muted">
-      Governance API <HealthBadge :status="health.status" />
+      {{ $t("dashboard.governanceApi") }} <HealthBadge :status="health.status" />
     </p>
 
     <div class="stat-grid">
       <div class="stat">
-        <span class="label">Total cost</span>
+        <span class="label">{{ $t("common.totalCost") }}</span>
         <span class="value">${{ usage.totalCost.toFixed(2) }}</span>
       </div>
       <div class="stat">
-        <span class="label">Requests</span>
+        <span class="label">{{ $t("common.requests") }}</span>
         <span class="value">{{ usage.totalRequests }}</span>
       </div>
       <div class="stat">
-        <span class="label">Budget alerts</span>
+        <span class="label">{{ $t("dashboard.budgetAlerts") }}</span>
         <span class="value">{{ alertCount }}</span>
       </div>
     </div>

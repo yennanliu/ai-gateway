@@ -8,14 +8,14 @@ onMounted(() => store.refresh("model"));
 
 <template>
   <section>
-    <h1>Usage</h1>
+    <h1>{{ $t("usage.title") }}</h1>
     <div class="stat-grid">
       <div class="stat">
-        <span class="label">Total cost</span>
+        <span class="label">{{ $t("common.totalCost") }}</span>
         <span class="value">${{ store.totalCost.toFixed(2) }}</span>
       </div>
       <div class="stat">
-        <span class="label">Requests</span>
+        <span class="label">{{ $t("common.requests") }}</span>
         <span class="value">{{ store.totalRequests }}</span>
       </div>
     </div>
@@ -23,7 +23,13 @@ onMounted(() => store.refresh("model"));
     <div v-if="store.rows.length" class="card" style="margin-top: 16px">
       <table class="data">
         <thead>
-          <tr><th>Model</th><th>Prompt</th><th>Completion</th><th>Cost</th><th>Requests</th></tr>
+          <tr>
+            <th>{{ $t("usage.th.model") }}</th>
+            <th>{{ $t("usage.th.prompt") }}</th>
+            <th>{{ $t("usage.th.completion") }}</th>
+            <th>{{ $t("usage.th.cost") }}</th>
+            <th>{{ $t("usage.th.requests") }}</th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="r in store.rows" :key="r.group ?? 'none'">
@@ -36,6 +42,6 @@ onMounted(() => store.refresh("model"));
         </tbody>
       </table>
     </div>
-    <p v-else class="muted" style="margin-top: 16px">No usage yet.</p>
+    <p v-else class="muted" style="margin-top: 16px">{{ $t("usage.empty") }}</p>
   </section>
 </template>

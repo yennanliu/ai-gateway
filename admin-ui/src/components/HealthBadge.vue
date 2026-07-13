@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { healthDisplay } from "@/lib/health";
+import { useI18n } from "@/i18n";
 
 const props = defineProps<{ status: string }>();
+const { t } = useI18n();
 const display = computed(() => healthDisplay(props.status));
+const label = computed(() => t(`health.${display.value.tone}`));
 </script>
 
 <template>
-  <span :class="['badge', display.tone]" role="status">{{ display.label }}</span>
+  <span :class="['badge', display.tone]" role="status">{{ label }}</span>
 </template>
 
 <style scoped>
