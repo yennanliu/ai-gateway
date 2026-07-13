@@ -144,15 +144,23 @@ and exits non-zero (so CI's `full-system` job goes red).
 (a few minutes). Subsequent runs reuse cached layers and finish in ~15s — a fast
 exit is success, not a skipped run; check for the `PASSED` line and exit 0.
 
-**Cleanup is automatic** (`docker compose down -v` on exit, even on failure). To
-inspect a running stack instead, bring it up by hand and leave it:
+**Cleanup is automatic** (`docker compose down -v` on exit, even on failure) —
+`make e2e-docker` is a one-shot test gate, not a service.
+
+To instead run the whole system as a **long-running stack you can use and access
+interactively**, use `make docker-up` (starts everything detached and leaves it
+running; prints the URLs + the seeded virtual key):
 
 ```bash
-docker compose -f deploy/docker-compose/docker-compose.yml up --build
-# governance-api :8080 · litellm-proxy :4000 · stub :9099 · admin-ui :8081
-docker compose -f deploy/docker-compose/docker-compose.yml logs seed   # see the seeded key
-docker compose -f deploy/docker-compose/docker-compose.yml down -v      # tear down + wipe volume
+make docker-up      # build + start; control :8080 · proxy :4000 · admin-ui :8081 · stub :9099
+make docker-ps      # container status
+make docker-logs    # tail logs
+make docker-down    # stop + remove containers and the data volume
 ```
+
+Once it's up, exercise it exactly like the bare-metal example above (Swagger at
+http://localhost:8080/docs, the admin UI at http://localhost:8081, and real chat
+completions against http://localhost:4000 with the printed `sk-ag-…` key).
 
 **Troubleshooting:**
 
