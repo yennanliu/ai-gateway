@@ -217,7 +217,10 @@ req_total() { # sum of .requests across the usage rows in file $1
     # `add // 0` guards the empty-array case (add of [] is null, which breaks -gt).
     jq '[.[].requests] | add // 0' "$1" 2>/dev/null || echo 0
   else
-    grep -oE '"requests":[0-9]+' "$1" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}'
+    # awk always prints a number (0 on empty input); `|| true` stops a no-match
+    # grep from failing the pipeline under `set -eo pipefail` (avoids the double
+    # "0" that `|| echo 0` would emit here, which would break the -gt test).
+    grep -oE '"requests":[0-9]+' "$1" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true
   fi
 }
 http GET "$GOV/api/v1/usage?group_by=model" "${ADMIN[@]}"

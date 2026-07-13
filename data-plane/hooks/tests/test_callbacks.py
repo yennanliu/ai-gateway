@@ -86,6 +86,16 @@ def test_scope_from_logging_metadata_falls_back_to_auth_metadata() -> None:
     }
 
 
+def test_scope_from_logging_metadata_tolerates_non_dict() -> None:
+    # Defensive: a non-dict metadata must not raise, just yield empty scope.
+    for bad in (None, "nope", ["x"], 3):
+        assert scope_from_logging_metadata(bad) == {  # type: ignore[arg-type]
+            "org_id": None,
+            "team_id": None,
+            "key_id": None,
+        }
+
+
 async def test_pre_call_passes_clean_request(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     org, team = _org_team(db)
     monkeypatch.setattr(callbacks, "open_session", _fresh_session_factory(db))

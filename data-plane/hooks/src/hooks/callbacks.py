@@ -41,6 +41,8 @@ def scope_from_logging_metadata(meta: dict[str, Any]) -> dict[str, str | None]:
     ``user_api_key_metadata`` / ``user_api_key_auth_metadata``). See
     doc/metering-writeback.md.
     """
+    if not isinstance(meta, dict):
+        meta = {}
     fallback = meta.get("user_api_key_metadata") or meta.get("user_api_key_auth_metadata") or {}
     if not isinstance(fallback, dict):
         fallback = {}
@@ -86,12 +88,15 @@ class AIGatewayLogger(CustomLogger):
         self, kwargs: dict[str, Any], response_obj: Any, start_time: Any, end_time: Any
     ) -> None:
         usage = getattr(response_obj, "usage", None)
-        meta = (kwargs.get("litellm_params") or {}).get("metadata") or {}
+        meta = (kwargs.get("litellm_params") or {}).get("metadata")
+        if not isinstance(meta, dict):
+            meta = {}
         scope = scope_from_logging_metadata(meta)
         # `model_group` is the public registry name the client asked for
         # (e.g. "demo-gpt"); `kwargs["model"]` is the resolved upstream deployment
-        # ("gpt-4o-mini"). Attribute usage/cost to the public name.
-        model = meta.get("model_group") or kwargs.get("model", "unknown")
+        # ("gpt-4o-mini"). Attribute usage/cost to the public name. Chain `or` so a
+        # present-but-None model value still falls back to "unknown".
+        model = meta.get("model_group") or kwargs.get("model") or "unknown"
         session = open_session()
         try:
             record_usage(
