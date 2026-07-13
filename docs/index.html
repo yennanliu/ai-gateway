@@ -183,49 +183,49 @@ curl <span class="c-str">http://localhost:4000/v1/chat/completions</span> \
 
         <div class="feature-grid">
           <article class="feature">
-            <div class="feature-ic">⇄</div>
+            <div class="feature-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16M4 9l4-4M4 9l4 4"/><path d="M20 15H4M20 15l-4-4M20 15l-4 4"/></svg></div>
             <h3>One API, many providers</h3>
             <p>A single OpenAI-compatible endpoint in front of OpenAI, Anthropic, Gemini, Bedrock,
               Azure, and self-hosted vLLM / Ollama.</p>
           </article>
           <article class="feature">
-            <div class="feature-ic">🔑</div>
+            <div class="feature-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 5l2 2M15 7l2 2"/></svg></div>
             <h3>BYOK &amp; virtual keys</h3>
             <p>Bring your own provider keys; consumers get scoped virtual keys. Only the hash + a
               display prefix are stored — plaintext is shown exactly once.</p>
           </article>
           <article class="feature">
-            <div class="feature-ic">📊</div>
+            <div class="feature-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><line x1="6" y1="21" x2="6" y2="12"/><line x1="12" y1="21" x2="12" y2="5"/><line x1="18" y1="21" x2="18" y2="9"/></svg></div>
             <h3>Usage &amp; cost accounting</h3>
             <p>Every request is metered, priced, and attributed to an org / team / user / app.
               Invoices, CSV export, and rate cards included.</p>
           </article>
           <article class="feature">
-            <div class="feature-ic">🛡️</div>
+            <div class="feature-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16a8 8 0 0 1 16 0"/><path d="M12 16l4-4"/><line x1="12" y1="16" x2="12" y2="16.5"/></svg></div>
             <h3>Budgets &amp; rate limits</h3>
             <p>Attach budgets and policies at any level. Most-specific-wins resolution:
               <code>key › app › user › team › org</code>.</p>
           </article>
           <article class="feature">
-            <div class="feature-ic">🧯</div>
+            <div class="feature-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></div>
             <h3>Guardrails</h3>
             <p>Pluggable input / output guardrails and logging sinks run in-proc on the proxy via the
               callback hook.</p>
           </article>
           <article class="feature">
-            <div class="feature-ic">👥</div>
+            <div class="feature-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5.2a3 3 0 0 1 0 5.6M21 20a6 6 0 0 0-4.5-5.8"/></svg></div>
             <h3>RBAC &amp; audit</h3>
             <p>Org → team → user hierarchy with roles (org-admin, team-admin, developer,
               billing-viewer, auditor). Every mutation appends an immutable audit event.</p>
           </article>
           <article class="feature">
-            <div class="feature-ic">♻️</div>
+            <div class="feature-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5A8 8 0 1 0 18 17"/><path d="M20 4v6h-6"/></svg></div>
             <h3>Reliability</h3>
             <p>Automatic fallback and retry when a primary model or provider fails or degrades —
               inherited from the LiteLLM router.</p>
           </article>
           <article class="feature">
-            <div class="feature-ic">🏢</div>
+            <div class="feature-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><line x1="7" y1="7.5" x2="7.01" y2="7.5"/><line x1="7" y1="16.5" x2="7.01" y2="16.5"/></svg></div>
             <h3>Self-hostable</h3>
             <p>All request/response data can stay inside your VPC or on-prem. Docker Compose for
               small deployments, Helm + HPA for scale.</p>
