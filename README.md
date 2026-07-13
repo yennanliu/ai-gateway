@@ -75,8 +75,14 @@ Everything above skips the LiteLLM proxy (data plane) by default. To run the
 actually exercise `/v1/chat/completions`, one click via Docker Compose:
 
 ```bash
-make e2e-docker      # docker compose up (seeded + wired) + a real request through LiteLLM
+make docker-up       # build + start the whole stack, detached, and LEAVE IT RUNNING
+                     # control :8080 · proxy :4000 · admin-ui :8081 · stub :9099 · prints the seeded key
+make docker-down     # stop it when you're done
 ```
+
+(`make e2e-docker` runs the same stack as a one-shot end-to-end **test** — ~34
+assertions across both planes, then it tears everything down. See
+[doc/full_run.md](doc/full_run.md).)
 
 Or bare-metal, for a hot-reload dev loop:
 
@@ -98,7 +104,7 @@ Test / lint:
 ```bash
 make test            # unit: pytest (+ coverage) and vitest
 make e2e             # end-to-end: boots the real server, drives the API over HTTP
-make e2e-docker      # full-system: docker compose up + real LiteLLM proxy request
+make e2e-docker      # full-system QA: docker compose up + ~34 assertions across both planes, then teardown
 make lint            # ruff + mypy
 make smoke           # shell smoke: migrate -> seed -> API -> authenticated request
 ```

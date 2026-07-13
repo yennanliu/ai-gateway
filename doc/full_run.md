@@ -10,34 +10,71 @@ See also: [testing & debugging](testing-and-debugging.md#4-do-i-need-to-run-the-
 for the background on why the proxy is optional, and [system design](system-design.md)
 for the two-plane architecture.
 
-## Option A: one click, via Docker Compose
+## Option A: Docker Compose (no host setup)
 
-The fastest way to see the full system (including a real LiteLLM proxy) working
-is `deploy/docker-compose/docker-compose.yml`. It builds the control plane and
-data-plane images, brings up a stub upstream provider, seeds demo data, compiles
-the LiteLLM config onto a shared volume, then starts the proxy already wired to
-serve real (stubbed) inference — no host Python/uv setup, no manual seeding.
+Everything runs in containers via `deploy/docker-compose/docker-compose.yml` — no
+host Python/uv, no manual seeding. It builds the control-plane and data-plane
+images, brings up a stub upstream provider, seeds demo data, compiles the LiteLLM
+config onto a shared volume, then starts the proxy already wired to serve real
+(stubbed) inference. Pick the mode you want:
 
-```bash
-./scripts/e2e_docker.sh    # or: make e2e-docker
-```
+- **A1 — run it as a service** you can click around and send requests to → `make docker-up`
+- **A2 — run it as a one-shot test** that verifies the system and cleans up → `make e2e-docker`
 
-This builds and starts `stub-provider` → `governance-api` → `seed` (one-shot) →
-`litellm-proxy`, waits for the proxy to become healthy, sends a real
-`/v1/chat/completions` call through custom-auth + routing using the seeded
-virtual key, checks an unknown key is rejected (401), then tears the whole
-stack down. It's the same script CI runs (`full-system` job).
+**Prerequisite (both):** a running Docker engine (Docker Desktop, or `colima start`).
 
-To leave the stack running and poke at it yourself instead of tearing it down:
+### A1. Run it as a service you can use — `make docker-up`
+
+Use this when you want the whole system up and **staying up**, so you can use the
+admin UI, try Swagger, and send real inference through the proxy.
 
 ```bash
-docker compose -f deploy/docker-compose/docker-compose.yml up --build
-# governance-api :8080, litellm-proxy :4000, stub provider :9099
-# virtual key printed in: docker compose -f deploy/docker-compose/docker-compose.yml logs seed
-docker compose -f deploy/docker-compose/docker-compose.yml down -v   # tear down + wipe the volume
+make docker-up
 ```
 
-Add `admin-ui` to the `up` command if you also want the Vue UI (`:8081`).
+This builds + starts everything detached, waits for the control plane and proxy
+to become healthy, and prints the URLs plus the seeded virtual key. You get:
+
+| URL | What |
+|---|---|
+| http://localhost:8080 | Control plane (governance API); Swagger UI at `/docs` |
+| http://localhost:4000 | LiteLLM proxy (OpenAI-compatible inference) |
+| http://localhost:8081 | Admin UI |
+| http://localhost:9099 | Stub upstream provider (fake OpenAI) |
+
+Send a chat completion through the proxy with the printed `sk-ag-…` key:
+
+```bash
+curl -s localhost:4000/v1/chat/completions \
+  -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
+  -d '{"model":"demo-gpt","messages":[{"role":"user","content":"hi"}]}'
+```
+
+Manage the running stack:
+
+```bash
+make docker-ps      # container status
+make docker-logs    # tail logs (Ctrl-C to stop tailing)
+make docker-down    # stop + remove containers and the data volume
+```
+
+(Lost the key? `docker compose -f deploy/docker-compose/docker-compose.yml logs seed`.)
+
+### A2. Run it as a one-shot test — `make e2e-docker`
+
+Use this to verify the whole system works end-to-end. It brings the **same** stack
+up, runs ~34 assertions across both planes (health/version, auth 401, RBAC 403,
+model registry, real chat completions, the issue→use→revoke→reject key lifecycle,
+billing), then **tears the stack down**. It's the CI `full-system` job, so it must
+clean up after itself — it is *not* a way to keep the app running (use A1 for that).
+
+```bash
+make e2e-docker         # comprehensive QA (scripts/e2e_docker_qa.sh)
+make e2e-docker-smoke   # fast variant: one real completion + a 401
+```
+
+See [testing & debugging §4.1](testing-and-debugging.md#41-running-the-full-system-docker-e2e-qa-locally)
+for the full assertion list and what to expect.
 
 ## Option B: bare-metal (hot-reload dev loop)
 
@@ -118,14 +155,15 @@ Test / lint the whole thing:
 
 ```bash
 make test            # unit: pytest (+ coverage) and vitest
-uv run pytest tests/integration   # real litellm.Router vs the stub, no proxy process needed
+uv run pytest tests/integration   # real litellm.Router + the control<->data-plane seams vs the stub
 make e2e             # end-to-end: boots the real server, drives the API over HTTP
-make e2e-docker      # full-system: docker compose up + a real request through LiteLLM
+make e2e-docker      # full-system QA: docker compose up + ~34 assertions across both planes, then teardown
 make lint            # ruff + mypy
 make smoke           # shell smoke: migrate -> seed -> API -> authenticated request
 ```
 
-Reset everything: `make clean && make migrate && make seed`.
+Reset everything: `make clean && make migrate && make seed`. To just run the
+whole system in Docker and leave it up, see [Option A1](#a1-run-it-as-a-service-you-can-use--make-docker-up).
 
 ## LiteLLM's own Admin UI (`/ui`) — not wired up, by design
 
