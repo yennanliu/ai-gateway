@@ -115,9 +115,7 @@ async def test_pre_call_passes_clean_request(db: Session, monkeypatch: pytest.Mo
     assert result["messages"] == [{"role": "user", "content": "hello"}]
 
 
-async def test_pre_call_handles_null_messages(
-    db: Session, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_pre_call_handles_null_messages(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     # {"messages": null} must not crash (data.get(..., []) would yield None).
     org, team = _org_team(db)
     monkeypatch.setattr(callbacks, "open_session", _fresh_session_factory(db))
