@@ -76,8 +76,17 @@ assert_rejected() {
   fi
 }
 
-json_field() { # <file> <field> -> first value of "field":"<val>" (string) or "field":<num>
-  grep -oE "\"$2\":\"?[^\",}]+\"?" "$1" | head -1 | sed -E "s/\"$2\"://; s/^\"//; s/\"$//" || true
+# jq ships on modern macOS and GitHub's ubuntu runners; prefer it for correct JSON
+# parsing, but keep a POSIX fallback so the script still runs where it's missing.
+if command -v jq >/dev/null 2>&1; then HAVE_JQ=1; else HAVE_JQ=0; fi
+
+json_field() { # <file> <field> -> the field's scalar value
+  if [ "$HAVE_JQ" = 1 ]; then
+    jq -r --arg k "$2" '.[$k] // empty' "$1" 2>/dev/null || true
+  else
+    # Fallback: fine for token-like fields (id/key); would truncate a value with a comma/brace.
+    grep -oE "\"$2\":\"?[^\",}]+\"?" "$1" | head -1 | sed -E "s/\"$2\"://; s/^\"//; s/\"$//" || true
+  fi
 }
 
 # ---- bring the stack up ------------------------------------------------------
@@ -203,7 +212,12 @@ fi
 section "Billing & usage aggregation (control plane)"
 http GET "$GOV/api/v1/usage?group_by=model" "${ADMIN[@]}"
 assert_code "GET /api/v1/usage?group_by=model" 200
-TOTAL_REQ=$(grep -oE '"requests":[0-9]+' "$LAST_BODY" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true)
+if [ "$HAVE_JQ" = 1 ]; then
+  # `add // 0` guards the empty-array case (add of [] is null, which would break -gt).
+  TOTAL_REQ=$(jq '[.[].requests] | add // 0' "$LAST_BODY" 2>/dev/null || echo 0)
+else
+  TOTAL_REQ=$(grep -oE '"requests":[0-9]+' "$LAST_BODY" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true)
+fi
 if [ "${TOTAL_REQ:-0}" -gt 0 ]; then
   ok "usage aggregation reports seeded requests (total=$TOTAL_REQ)"
 else

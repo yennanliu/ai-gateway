@@ -270,4 +270,5 @@ async def test_full_request_lifecycle_through_all_seams(
         )
         assert rec is not None
         assert rec.org_id == gateway.org_id
-        assert rec.prompt_tokens == resp.usage.prompt_tokens > 0
+        assert rec.prompt_tokens == resp.usage.prompt_tokens
+        assert resp.usage.prompt_tokens > 0
