@@ -48,6 +48,7 @@ window.I18N_ZH = {
   "g.arch.h2": "如何構建",
   "g.arch.p1": "在進入步驟之前，先建立一個一分鐘就懂的心智模型。這個閘道器是刻意設計的<strong>雙平面切分</strong>。<strong>資料平面</strong>就是 <strong>LiteLLM Proxy</strong>，以固定版本的相依套件形式使用 — 它掌管快速、OpenAI 相容的請求路徑與所有供應商轉接器。<strong>控制平面</strong>則是我們自己的 FastAPI 服務加上一個 Vue 主控台 — 組織、團隊、使用者、金鑰、模型註冊表、預算、用量與稽核。那才是產品本身。",
   "g.arch.d.clients.t": "用戶端",
+  "g.arch.d.clients.i": "OpenAI SDK · Agent 框架 · 你的應用程式",
   "g.arch.d.data.label": "資料平面 — 熱路徑（LiteLLM）",
   "g.arch.d.proxy.t": "LiteLLM Proxy :4000",
   "g.arch.d.proxy.i": "OpenAI 相容的 <code>/v1/*</code> · 路由 · 備援",
@@ -59,7 +60,9 @@ window.I18N_ZH = {
   "g.arch.d.ui.t": "Vue 主控台 :8081",
   "g.arch.d.ui.i": "管理 + 自助 · 用量 · 稽核",
   "g.arch.d.db.t": "單一資料庫 — 真實來源",
+  "g.arch.d.db.i": "預設為 SQLite · 只需更改一個環境變數即可切換為 Postgres（金鑰 · 花費 · 組織 · 稽核）",
   "g.arch.d.prov.t": "供應商",
+  "g.arch.d.prov.i": "OpenAI · Anthropic · Gemini · Bedrock / Azure · 自行託管 — 或離線 stub",
   "g.arch.invariant": "讓其他一切運作的唯一不變量：<strong>我們的資料庫才是金鑰與花費的真實來源</strong>，而非 LiteLLM 自己的金鑰儲存。proxy 會透過 hooks 回呼我們的資料庫來驗證每一個請求 — 這正是為什麼撤銷（步驟 14）會在下一次呼叫時立即生效。",
 
   "g.reqpath.h2": "一個受治理請求的剖析",
