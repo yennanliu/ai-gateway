@@ -125,9 +125,12 @@ def enforce_pre_call_messages(
         return messages
     guarded: list[dict[str, Any]] = []
     for msg in messages:
-        content = msg.get("content")
-        if isinstance(content, str):
-            guarded.append({**msg, "content": _guard_text(policy.guardrails, content)})
-        else:
-            guarded.append(msg)
+        # Guard non-dict / non-string-content entries: leave them untouched for
+        # LiteLLM to validate/reject downstream rather than crashing the hook.
+        if isinstance(msg, dict):
+            content = msg.get("content")
+            if isinstance(content, str):
+                guarded.append({**msg, "content": _guard_text(policy.guardrails, content)})
+                continue
+        guarded.append(msg)
     return guarded

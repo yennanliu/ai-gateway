@@ -115,6 +115,21 @@ async def test_pre_call_passes_clean_request(db: Session, monkeypatch: pytest.Mo
     assert result["messages"] == [{"role": "user", "content": "hello"}]
 
 
+async def test_pre_call_handles_null_messages(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # {"messages": null} must not crash (data.get(..., []) would yield None).
+    org, team = _org_team(db)
+    monkeypatch.setattr(callbacks, "open_session", _fresh_session_factory(db))
+    logger = AIGatewayLogger()
+    data: dict = {"messages": None}
+    result = await logger.async_pre_call_hook(
+        FakeAuth(team_id=team.id, org_id=org.id, api_key="k1"), None, data, "completion"
+    )
+    # No crash; the null normalizes to an empty list on the outbound request.
+    assert result["messages"] == []
+
+
 async def test_pre_call_redacts_outbound_messages(
     db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

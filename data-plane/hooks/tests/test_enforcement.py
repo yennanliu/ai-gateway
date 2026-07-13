@@ -149,3 +149,16 @@ def test_messages_non_string_content_passes_through(db: Session) -> None:
     )
     # v1: multimodal/list content is passed through untouched (documented limitation).
     assert out[0]["content"] == parts
+
+
+def test_messages_non_dict_entries_pass_through(db: Session) -> None:
+    # Malformed entries (raw strings, None) must not crash the hook; they are
+    # left for LiteLLM to validate/reject downstream.
+    org, team = _org_team(db)
+    db.add(Policy(scope_type="team", scope_id=team.id, guardrails={"input": {"pii": "redact"}}))
+    db.flush()
+    ctx = ScopeContext(org_id=org.id, team_id=team.id, key_id="k1")
+    msgs = ["oops", None, {"role": "user", "content": "mail a@b.com"}]
+    out = enforce_pre_call_messages(db, InProcessCounter(), ctx, messages=msgs, now=NOW)  # type: ignore[list-item]
+    assert out[0] == "oops" and out[1] is None
+    assert "[REDACTED:email]" in out[2]["content"]

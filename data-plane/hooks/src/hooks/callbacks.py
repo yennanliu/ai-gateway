@@ -80,7 +80,7 @@ class AIGatewayLogger(CustomLogger):
                 session,
                 self.counter,
                 ctx,
-                messages=data.get("messages", []),
+                messages=data.get("messages") or [],
                 now=datetime.now(UTC),
                 rpm_limit=getattr(user_api_key_dict, "rpm_limit", None),
             )
