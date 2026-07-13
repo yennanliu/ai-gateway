@@ -8,6 +8,9 @@
 node_modules
 admin-ui/dist
 admin-ui/node_modules
+ai-gateway-stack
+cdk.out
+**/cdk.out
 *.db
 *.sqlite3
 litellm.config.yaml
