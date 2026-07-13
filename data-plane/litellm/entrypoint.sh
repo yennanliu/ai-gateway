@@ -37,5 +37,24 @@ finally:
     sys.path = _saved_path
 PY
 
+# Same story for the metering success-callback: LiteLLM resolves
+# `litellm_settings.callbacks: hooks.callbacks.aigw_logger` as a FILE relative to
+# the config dir (litellm/proxy/types_utils/utils.py::get_instance_fn), so it
+# needs hooks/callbacks.py next to the config too. Emit a shim that re-imports the
+# real logger instance through the normal import system. See doc/metering-writeback.md.
+cat > "$CONFIG_DIR/hooks/callbacks.py" <<'PY'
+import os
+import sys
+
+_shim_dir = os.path.dirname(os.path.abspath(__file__))
+_config_dir = os.path.dirname(_shim_dir)
+_saved_path = sys.path[:]
+try:
+    sys.path = [p for p in sys.path if os.path.abspath(p or ".") not in (_shim_dir, _config_dir)]
+    from hooks.callbacks import aigw_logger  # noqa: F401
+finally:
+    sys.path = _saved_path
+PY
+
 echo "==> Starting LiteLLM proxy on :$PORT with config $CONFIG"
 exec litellm --config "$CONFIG" --port "$PORT"

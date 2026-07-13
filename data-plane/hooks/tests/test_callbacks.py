@@ -8,7 +8,12 @@ from decimal import Decimal
 import pytest
 from fastapi import HTTPException
 from hooks import callbacks
-from hooks.callbacks import AIGatewayLogger, messages_text, scope_from
+from hooks.callbacks import (
+    AIGatewayLogger,
+    messages_text,
+    scope_from,
+    scope_from_logging_metadata,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -49,6 +54,46 @@ def test_scope_from_reads_fields_and_handles_none() -> None:
         "key_id": "k",
     }
     assert scope_from(None) == {"team_id": None, "org_id": None, "key_id": None}
+
+
+def test_scope_from_logging_metadata_reads_flattened_keys() -> None:
+    # LiteLLM flattens the auth object into user_api_key_* keys; key_alias is OUR id.
+    meta = {
+        "user_api_key_org_id": "o1",
+        "user_api_key_team_id": "t1",
+        "user_api_key_alias": "kid-123",
+    }
+    assert scope_from_logging_metadata(meta) == {
+        "org_id": "o1",
+        "team_id": "t1",
+        "key_id": "kid-123",
+    }
+
+
+def test_scope_from_logging_metadata_falls_back_to_auth_metadata() -> None:
+    # When the flattened keys are absent, fall back to the stashed auth metadata.
+    meta = {
+        "user_api_key_metadata": {
+            "aigw_org_id": "o2",
+            "aigw_team_id": "t2",
+            "aigw_key_id": "kid-456",
+        }
+    }
+    assert scope_from_logging_metadata(meta) == {
+        "org_id": "o2",
+        "team_id": "t2",
+        "key_id": "kid-456",
+    }
+
+
+def test_scope_from_logging_metadata_tolerates_non_dict() -> None:
+    # Defensive: a non-dict metadata must not raise, just yield empty scope.
+    for bad in (None, "nope", ["x"], 3):
+        assert scope_from_logging_metadata(bad) == {  # type: ignore[arg-type]
+            "org_id": None,
+            "team_id": None,
+            "key_id": None,
+        }
 
 
 async def test_pre_call_passes_clean_request(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -94,10 +139,14 @@ async def test_success_event_records_usage(db: Session, monkeypatch: pytest.Monk
         usage: Usage
 
     kwargs = {
-        "model": "gpt-4o",
+        # Upstream deployment; metadata.model_group is the public registry name.
+        "model": "gpt-4o-mini",
         "litellm_params": {
             "metadata": {
-                "user_api_key_auth": FakeAuth(team_id=team.id, org_id=org.id, api_key="k1")
+                "user_api_key_org_id": org.id,
+                "user_api_key_team_id": team.id,
+                "user_api_key_alias": "kid-1",
+                "model_group": "gpt-4o",
             }
         },
     }
@@ -105,4 +154,8 @@ async def test_success_event_records_usage(db: Session, monkeypatch: pytest.Monk
     await logger.async_log_success_event(kwargs, Resp(Usage()), None, None)
 
     rec = db.execute(select(UsageRecord)).scalar_one()
-    assert rec.cost == Decimal("3.000000") and rec.org_id == org.id
+    # Priced against the "gpt-4o" rate card (public name), attributed to our org/key.
+    assert rec.cost == Decimal("3.000000")
+    assert rec.org_id == org.id
+    assert rec.model == "gpt-4o"
+    assert rec.key_id == "kid-1"
