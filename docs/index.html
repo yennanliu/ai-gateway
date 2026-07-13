@@ -9,7 +9,20 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23232f3e'/%3E%3Cpath d='M8 22 L16 8 L24 22 M11 18 H21' stroke='%23ff9900' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <script>
+    // Set theme before first paint to avoid a flash of the wrong theme.
+    (function () {
+      try {
+        var saved = localStorage.getItem("theme");
+        var prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+        var theme = saved || (prefersLight ? "light" : "dark");
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23000000'/%3E%3Cpath d='M8 22 L16 8 L24 22 M11 18 H21' stroke='%23ffffff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
 </head>
 <body>
 
@@ -18,7 +31,7 @@
     <div class="topbar-inner">
       <a class="brand" href="#top" aria-label="AI Gateway home">
         <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="24" height="24"><rect width="32" height="32" rx="6" fill="#232f3e"/><path d="M8 22 L16 8 L24 22 M11 18 H21" stroke="#ff9900" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 32 32" width="24" height="24"><rect width="32" height="32" rx="7" fill="none" stroke="#3d3d3d"/><path d="M8 22 L16 8 L24 22 M11 18 H21" stroke="#ffffff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <span class="brand-text">AI&nbsp;Gateway</span>
       </a>
@@ -36,6 +49,11 @@
         <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway" target="_blank" rel="noopener">GitHub ↗</a>
         <a class="btn btn-primary" href="#quickstart">Get started</a>
       </div>
+
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle color theme" title="Toggle light / dark theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
 
       <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
         <span></span><span></span><span></span>
@@ -478,7 +496,7 @@ docker compose up --build
     <div class="wrap footer-inner">
       <div class="footer-brand">
         <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="20" height="20"><rect width="32" height="32" rx="6" fill="#ff9900"/><path d="M8 22 L16 8 L24 22 M11 18 H21" stroke="#232f3e" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 32 32" width="20" height="20"><rect width="32" height="32" rx="7" fill="none" stroke="#3d3d3d"/><path d="M8 22 L16 8 L24 22 M11 18 H21" stroke="#ffffff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <span>AI Gateway</span>
       </div>
@@ -488,7 +506,7 @@ docker compose up --build
         <a href="https://github.com/yennanliu/ai-gateway/blob/main/doc/runbook.md" target="_blank" rel="noopener">Runbook</a>
         <a href="https://docs.litellm.ai/docs/simple_proxy" target="_blank" rel="noopener">LiteLLM</a>
       </nav>
-      <p class="footer-note">Built on LiteLLM Proxy · Self-hostable · Not affiliated with Amazon Web Services.</p>
+      <p class="footer-note">Built on LiteLLM Proxy · Self-hostable · Open source.</p>
     </div>
   </footer>
 

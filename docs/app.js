@@ -2,6 +2,31 @@
 (function () {
   "use strict";
 
+  /* ---- theme toggle (light / dark) ---- */
+  // The initial theme is set by an inline <head> script to avoid a flash.
+  var themeToggle = document.getElementById("themeToggle");
+  if (themeToggle) {
+    var root = document.documentElement;
+    var setLabel = function () {
+      var t = root.getAttribute("data-theme") === "light" ? "light" : "dark";
+      themeToggle.setAttribute(
+        "aria-label",
+        t === "light" ? "Switch to dark theme" : "Switch to light theme"
+      );
+    };
+    setLabel();
+    themeToggle.addEventListener("click", function () {
+      var next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
+      root.setAttribute("data-theme", next);
+      try {
+        localStorage.setItem("theme", next);
+      } catch (e) {
+        /* storage unavailable — theme still applies for this session */
+      }
+      setLabel();
+    });
+  }
+
   /* ---- mobile nav toggle ---- */
   var topbar = document.querySelector(".topbar");
   var toggle = document.getElementById("navToggle");
