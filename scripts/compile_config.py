@@ -20,22 +20,25 @@ import time
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DBAPIError
 
 from governance_api.config import settings
 from governance_api.db.models import ModelDeployment, ProviderCredential
 from governance_api.db.session import SessionLocal
 from governance_api.services.config_compiler import compile_config, compile_for_org, write_config
 
-# On a cold deploy the data plane can start before the DB accepts connections;
-# retry a few times (exponential backoff) before giving up to the template.
+# On a cold deploy the data plane can start before the DB accepts connections
+# OR before the control plane has finished migrating (so the tables the compile
+# reads don't exist yet). Both surface as DBAPIError subclasses — OperationalError
+# for connection refusal, ProgrammingError for a missing relation — so retry a few
+# times (exponential backoff) before giving up to the template.
 _MAX_ATTEMPTS = 5
 
 
 def _compile() -> dict[str, Any]:
     org_id = os.environ.get("AIGW_ORG_ID")
     with SessionLocal() as session:
-        session.execute(select(1))  # readiness probe — raises OperationalError if the DB isn't up
+        session.execute(select(1))  # readiness probe — raises if the DB isn't accepting connections
         if org_id:
             return compile_for_org(session, org_id)
         # Whole-fleet config: every active deployment across every org, with all
@@ -55,7 +58,7 @@ def main() -> None:
         try:
             config = _compile()
             break
-        except OperationalError:
+        except DBAPIError:
             if attempt == _MAX_ATTEMPTS - 1:
                 raise
             delay = 2**attempt

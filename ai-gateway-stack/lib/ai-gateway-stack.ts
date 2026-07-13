@@ -52,7 +52,10 @@ export class AiGatewayStack extends Stack {
     // `cdk destroy -c version=vN` cleans up fully. Pass `-c retainData=true`
     // for anything real — the DB is then kept on delete (SNAPSHOT) with
     // deletion protection on.
-    const retainData = Boolean(this.node.tryGetContext('retainData'));
+    // CDK CLI context (`-c retainData=false`) arrives as the STRING "false",
+    // which is truthy — so compare explicitly rather than coercing.
+    const retainDataCtx = this.node.tryGetContext('retainData');
+    const retainData = retainDataCtx === true || retainDataCtx === 'true';
 
     // Ports each plane listens on (mirrors docker-compose).
     const CONTROL_PORT = 8080;
@@ -280,6 +283,9 @@ export class AiGatewayStack extends Stack {
     // Default: the SPA. ALB allows at most 5 path values per condition, so each
     // rule stays <= 5. `/api/*` covers every control-plane route (all under
     // /api/v1); `/v1/*` covers the OpenAI surface. The prefixes are disjoint.
+    // `/models*` (not `/models`) so `GET /models/{id}` retrieve also routes here;
+    // the trailing wildcard costs one slot vs. splitting into `/models` + `/models/*`.
+    // `/embeddings` has no subpaths, so no wildcard is needed there.
     listener.addTargetGroups('Default', { targetGroups: [uiTg] });
     listener.addTargetGroups('ControlPlane', {
       priority: 10,
@@ -294,7 +300,7 @@ export class AiGatewayStack extends Stack {
       priority: 20,
       conditions: [
         elbv2.ListenerCondition.pathPatterns([
-          '/v1/*', '/health/*', '/models*', '/chat/*', '/embeddings*',
+          '/v1/*', '/health/*', '/models*', '/chat/*', '/embeddings',
         ]),
       ],
       targetGroups: [dataTg],
