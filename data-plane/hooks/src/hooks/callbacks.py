@@ -14,7 +14,7 @@ from litellm.integrations.custom_logger import CustomLogger
 
 from governance_api.services.metering import record_usage
 from hooks.auth import open_session
-from hooks.enforcement import Blocked, enforce_pre_call
+from hooks.enforcement import Blocked, enforce_pre_call_messages
 from hooks.ratelimit import InProcessCounter, RateCounter
 
 
@@ -24,11 +24,19 @@ def messages_text(messages: list[dict[str, Any]]) -> str:
 
 
 def scope_from(user_api_key_dict: Any) -> dict[str, str | None]:
-    """Extract our scope fields from LiteLLM's auth object (pre-call path)."""
+    """Extract our scope fields from LiteLLM's auth object (pre-call path).
+
+    ``key_id`` must be OUR internal key id, which the custom-auth adapter stamps
+    onto ``key_alias`` (``api_key`` is the plaintext/hashed token, not our id).
+    Reading the wrong field silently breaks key-scoped budget enforcement — the
+    lookup compares against ``Budget.scope_id`` (our id). Mirror the success path
+    (``scope_from_logging_metadata``). See doc/metering-writeback.md.
+    """
     return {
         "team_id": getattr(user_api_key_dict, "team_id", None),
         "org_id": getattr(user_api_key_dict, "org_id", None),
-        "key_id": getattr(user_api_key_dict, "api_key", None),
+        "key_id": getattr(user_api_key_dict, "key_alias", None)
+        or getattr(user_api_key_dict, "api_key", None),
     }
 
 
@@ -68,11 +76,11 @@ class AIGatewayLogger(CustomLogger):
         ctx = ScopeContext(org_id=scope["org_id"], team_id=scope["team_id"], key_id=scope["key_id"])
         session = open_session()
         try:
-            redacted = enforce_pre_call(
+            guarded = enforce_pre_call_messages(
                 session,
                 self.counter,
                 ctx,
-                input_text=messages_text(data.get("messages", [])),
+                messages=data.get("messages") or [],
                 now=datetime.now(UTC),
                 rpm_limit=getattr(user_api_key_dict, "rpm_limit", None),
             )
@@ -80,8 +88,19 @@ class AIGatewayLogger(CustomLogger):
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
         finally:
             session.close()
-        # Redacted input is advisory in v1; return data unmodified in shape.
-        data.setdefault("metadata", {})["aigw_input"] = redacted
+        # Substitute the guarded (e.g. PII-redacted) messages so redaction
+        # actually rewrites the outbound request, not just a metadata copy.
+        if "messages" in data:
+            data["messages"] = guarded
+        # Force usage reporting on streamed requests. Providers (OpenAI et al.)
+        # omit token usage from streams unless stream_options.include_usage is
+        # set, so without this a streaming client would silently under-meter.
+        if data.get("stream"):
+            opts = data.get("stream_options")
+            if not isinstance(opts, dict):
+                opts = {}
+                data["stream_options"] = opts
+            opts.setdefault("include_usage", True)
         return data
 
     async def async_log_success_event(

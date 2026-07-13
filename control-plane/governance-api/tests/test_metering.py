@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 
+import pytest
 from factories import make_org, make_team
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -65,3 +67,18 @@ def test_record_usage_no_ratecard_is_free(db: Session) -> None:
         completion_tokens=100,
     )
     assert rec.cost == Decimal("0")
+
+
+def test_record_usage_no_ratecard_warns(db: Session, caplog: pytest.LogCaptureFixture) -> None:
+    org = make_org(db)
+    with caplog.at_level(logging.WARNING, logger="governance_api.metering"):
+        record_usage(
+            db,
+            key_id=None,
+            team_id=None,
+            org_id=org.id,
+            model="unpriced",
+            prompt_tokens=1,
+            completion_tokens=1,
+        )
+    assert any("no RateCard" in r.message and "unpriced" in r.message for r in caplog.records)

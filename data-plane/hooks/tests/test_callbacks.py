@@ -17,7 +17,7 @@ from hooks.callbacks import (
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from governance_api.db.models import Budget, Org, RateCard, Team, UsageRecord
+from governance_api.db.models import Budget, Org, Policy, RateCard, Team, UsageRecord
 
 
 @dataclass
@@ -25,6 +25,7 @@ class FakeAuth:
     team_id: str | None = None
     org_id: str | None = None
     api_key: str | None = None
+    key_alias: str | None = None
     rpm_limit: int | None = None
 
 
@@ -54,6 +55,13 @@ def test_scope_from_reads_fields_and_handles_none() -> None:
         "key_id": "k",
     }
     assert scope_from(None) == {"team_id": None, "org_id": None, "key_id": None}
+
+
+def test_scope_from_prefers_key_alias_for_key_id() -> None:
+    # key_alias carries OUR internal key id; it must win over api_key (plaintext),
+    # else key-scoped budgets never match. Falls back to api_key when alias absent.
+    assert scope_from(FakeAuth(api_key="plaintext", key_alias="kid-1"))["key_id"] == "kid-1"
+    assert scope_from(FakeAuth(api_key="plaintext", key_alias=None))["key_id"] == "plaintext"
 
 
 def test_scope_from_logging_metadata_reads_flattened_keys() -> None:
@@ -104,7 +112,38 @@ async def test_pre_call_passes_clean_request(db: Session, monkeypatch: pytest.Mo
     result = await logger.async_pre_call_hook(
         FakeAuth(team_id=team.id, org_id=org.id, api_key="k1"), None, data, "completion"
     )
-    assert result["metadata"]["aigw_input"] == "hello"
+    assert result["messages"] == [{"role": "user", "content": "hello"}]
+
+
+async def test_pre_call_handles_null_messages(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    # {"messages": null} must not crash (data.get(..., []) would yield None).
+    org, team = _org_team(db)
+    monkeypatch.setattr(callbacks, "open_session", _fresh_session_factory(db))
+    logger = AIGatewayLogger()
+    data: dict = {"messages": None}
+    result = await logger.async_pre_call_hook(
+        FakeAuth(team_id=team.id, org_id=org.id, api_key="k1"), None, data, "completion"
+    )
+    # No crash; the null normalizes to an empty list on the outbound request.
+    assert result["messages"] == []
+
+
+async def test_pre_call_redacts_outbound_messages(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A pii:redact policy must rewrite the OUTBOUND messages, not a metadata copy.
+    org, team = _org_team(db)
+    db.add(Policy(scope_type="team", scope_id=team.id, guardrails={"input": {"pii": "redact"}}))
+    db.commit()
+    monkeypatch.setattr(callbacks, "open_session", _fresh_session_factory(db))
+    logger = AIGatewayLogger()
+    data = {"messages": [{"role": "user", "content": "email me at a@b.com"}]}
+    result = await logger.async_pre_call_hook(
+        FakeAuth(team_id=team.id, org_id=org.id, api_key="k1"), None, data, "completion"
+    )
+    content = result["messages"][0]["content"]
+    assert "a@b.com" not in content
+    assert "[REDACTED:email]" in content
 
 
 async def test_pre_call_blocks_over_budget(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -116,6 +155,25 @@ async def test_pre_call_blocks_over_budget(db: Session, monkeypatch: pytest.Monk
     with pytest.raises(HTTPException) as exc:
         await logger.async_pre_call_hook(
             FakeAuth(team_id=team.id, org_id=org.id, api_key="k1"),
+            None,
+            {"messages": [{"role": "user", "content": "hi"}]},
+            "completion",
+        )
+    assert exc.value.status_code == 402
+
+
+async def test_pre_call_blocks_over_key_budget(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A key-scoped budget must be enforced via key_alias (our id), not api_key.
+    org, team = _org_team(db)
+    db.add(Budget(scope_type="key", scope_id="kid-1", limit=Decimal("5"), spent=Decimal("5")))
+    db.commit()
+    monkeypatch.setattr(callbacks, "open_session", _fresh_session_factory(db))
+    logger = AIGatewayLogger()
+    with pytest.raises(HTTPException) as exc:
+        await logger.async_pre_call_hook(
+            FakeAuth(team_id=team.id, org_id=org.id, api_key="plaintext", key_alias="kid-1"),
             None,
             {"messages": [{"role": "user", "content": "hi"}]},
             "completion",

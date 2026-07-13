@@ -29,6 +29,7 @@ class AuthContext:
     team_id: str
     org_id: str
     allowed_models: list[str]
+    rpm_limit: int | None = None
 
 
 def _expired(expires_at: datetime | None) -> bool:
@@ -43,6 +44,12 @@ def _expired(expires_at: datetime | None) -> bool:
 def authenticate(
     session: Session, plaintext: str, requested_model: str | None = None
 ) -> AuthContext:
+    # A fully-absent credential reaches us as None/"" (LiteLLM still calls
+    # custom-auth when no Authorization header is present). Treat it as an auth
+    # failure (401) rather than letting hash_key(None) raise AttributeError,
+    # which LiteLLM would surface as a 500. See scripts/e2e_docker_qa.sh.
+    if not plaintext:
+        raise AuthError("no API key provided")
     key = session.execute(
         select(VirtualKey).where(VirtualKey.hashed_key == hash_key(plaintext))
     ).scalar_one_or_none()
@@ -60,6 +67,7 @@ def authenticate(
         team_id=key.team_id,
         org_id=team.org_id if team else "",
         allowed_models=list(key.allowed_models),
+        rpm_limit=key.rpm_limit,
     )
 
 
@@ -90,11 +98,15 @@ async def user_api_key_auth(request: object, api_key: str):  # noqa: ANN201 - Li
     # the logging metadata (user_api_key_*); `key_alias` carries OUR internal key
     # id (not LiteLLM's hashed token). `metadata` is a belt-and-braces fallback.
     # See doc/metering-writeback.md.
+    # `rpm_limit` must ride on the auth object too: the pre-call hook reads it
+    # from here to enforce per-key rate limits (429). Without it the rate-limit
+    # leg is silently dead. See doc/metering-writeback.md / enforcement.py.
     return UserAPIKeyAuth(
         api_key=api_key,
         team_id=ctx.team_id,
         org_id=ctx.org_id,
         key_alias=ctx.key_id,
+        rpm_limit=ctx.rpm_limit,
         metadata={
             "aigw_key_id": ctx.key_id,
             "aigw_org_id": ctx.org_id,

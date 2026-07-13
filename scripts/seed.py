@@ -27,7 +27,8 @@ def main() -> None:
     print(f"  org:    {result['org_id']}  (sign in with this org id, role org-admin)")
     print(f"  team:   {result['team_id']}  (Platform; +{counts['teams'] - 1} more)")
     print(
-        f"  models: {counts['models']}  (demo-gpt / demo-gpt-4o / demo-claude, via stub {stub_url})"
+        f"  models: {counts['models']}  "
+        f"(demo-gpt / demo-gpt-4o / demo-claude / demo-gemini, via stub {stub_url})"
     )
     print(f"  usage:  {counts['usage_rows_added']} record(s) seeded (dashboard + usage views)")
     print(f"  key:    {result['key']}   <-- shown once")

@@ -79,7 +79,7 @@ class Gateway:
     org_id: str
     platform_team_id: str  # under budget (88/100), primary team of the seeded key
     research_team_id: str  # over budget (60/60) -> pre-call enforcement blocks
-    key: str  # seeded plaintext key; allowed_models = demo-gpt, demo-gpt-4o
+    key: str  # seeded plaintext key; allowed_models = all four demo models
 
 
 @pytest.fixture

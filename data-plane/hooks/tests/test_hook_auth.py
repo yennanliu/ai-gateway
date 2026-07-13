@@ -22,6 +22,7 @@ def _seed_key(
     allowed: list[str] | None = None,
     status: str = "active",
     expires_at: datetime | None = None,
+    rpm_limit: int | None = None,
 ) -> tuple[str, VirtualKey, Team]:
     org = Org(name="o")
     db.add(org)
@@ -37,6 +38,7 @@ def _seed_key(
         allowed_models=allowed or [],
         status=status,
         expires_at=expires_at,
+        rpm_limit=rpm_limit,
     )
     db.add(key)
     db.commit()
@@ -60,6 +62,14 @@ def test_authenticate_valid(db: Session) -> None:
 def test_invalid_key_rejected(db: Session) -> None:
     with pytest.raises(AuthError):
         authenticate(db, "sk-ag-does-not-exist")
+
+
+def test_missing_key_raises_autherror_not_crash(db: Session) -> None:
+    # Absent credential (None/"") must be an AuthError -> 401, not an
+    # AttributeError from hash_key(None) that LiteLLM would surface as 500.
+    for missing in ("", None):
+        with pytest.raises(AuthError):
+            authenticate(db, missing)  # type: ignore[arg-type]
 
 
 def test_revoked_key_rejected(db: Session) -> None:
@@ -95,13 +105,21 @@ def test_empty_allowlist_permits_any_model(db: Session) -> None:
     assert authenticate(db, plaintext, requested_model="anything") is not None
 
 
+def test_authenticate_carries_rpm_limit(db: Session) -> None:
+    plaintext, _, _ = _seed_key(db, rpm_limit=5)
+    assert authenticate(db, plaintext).rpm_limit == 5
+
+
 async def test_adapter_returns_user_api_key_auth(
     db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    plaintext, _, team = _seed_key(db)
+    plaintext, key, team = _seed_key(db, rpm_limit=7)
     monkeypatch.setattr(authmod, "open_session", lambda: sessionmaker(bind=db.get_bind())())
     result = await authmod.user_api_key_auth(None, plaintext)
     assert result.team_id == team.id
+    # our scope + rpm_limit must ride on the auth object for the pre-call hook.
+    assert result.key_alias == key.id
+    assert result.rpm_limit == 7
 
 
 async def test_adapter_rejects_bad_key_with_401(
@@ -111,3 +129,14 @@ async def test_adapter_rejects_bad_key_with_401(
     with pytest.raises(HTTPException) as exc:
         await authmod.user_api_key_auth(None, "sk-ag-nope")
     assert exc.value.status_code == 401
+
+
+async def test_adapter_rejects_absent_key_with_401(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # No Authorization header -> LiteLLM calls custom-auth with None/"".
+    monkeypatch.setattr(authmod, "open_session", lambda: sessionmaker(bind=db.get_bind())())
+    for missing in ("", None):
+        with pytest.raises(HTTPException) as exc:
+            await authmod.user_api_key_auth(None, missing)  # type: ignore[arg-type]
+        assert exc.value.status_code == 401
