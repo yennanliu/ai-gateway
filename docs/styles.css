@@ -180,7 +180,7 @@ code {
 .lang-toggle {
   display: inline-flex; align-items: center; padding: 2px;
   background: transparent; border: 1px solid var(--border);
-  border-radius: 999px; cursor: pointer; gap: 1px;
+  border-radius: 999px; gap: 1px;
   transition: border-color .2s;
 }
 .lang-toggle:hover { border-color: var(--border-strong); }
@@ -190,8 +190,11 @@ code {
   font-size: 13px; font-weight: 600; line-height: 1;
   color: var(--text-muted); border-radius: 999px;
   transition: background .2s, color .2s;
+  background: transparent; border: 0; cursor: pointer;
+  font-family: inherit;
 }
 .lang-toggle .lang-opt.active { background: var(--surface); color: var(--text); }
+.lang-toggle .lang-opt:focus-visible { border-radius: 999px; }
 
 .nav-toggle {
   display: none; flex-direction: column; gap: 4px;

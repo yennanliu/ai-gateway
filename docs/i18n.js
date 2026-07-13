@@ -68,8 +68,12 @@
 
   var toggle = document.getElementById("langToggle");
   if (toggle) {
-    toggle.addEventListener("click", function () {
-      current = current === "zh" ? "en" : "zh";
+    toggle.addEventListener("click", function (e) {
+      var opt = e.target.closest(".lang-opt");
+      if (!opt) return;
+      var lang = opt.getAttribute("data-lang") === "zh" ? "zh" : "en";
+      if (lang === current) return;
+      current = lang;
       saveLang(current);
       apply(current);
     });
