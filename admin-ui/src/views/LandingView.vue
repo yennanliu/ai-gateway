@@ -1,56 +1,39 @@
 <script setup lang="ts">
-import { reactive } from "vue";
+import { computed, reactive } from "vue";
 import { useAuthStore } from "@/stores/auth";
+import { useI18n } from "@/i18n";
+import { messages } from "@/i18n/messages";
 
 const auth = useAuthStore();
+const { locale } = useI18n();
 const form = reactive({ userId: "admin", orgId: "", roles: "org-admin" });
 
 function login(): void {
   auth.login({ userId: form.userId, orgId: form.orgId, roles: form.roles.split(",") });
 }
 
-const features = [
-  {
-    title: "One API, every model",
-    body: "An OpenAI-compatible endpoint in front of OpenAI, Anthropic, Gemini, Bedrock, and self-hosted models — with automatic routing and fallback.",
-  },
-  {
-    title: "Virtual keys & governance",
-    body: "Org → team → app hierarchy, RBAC, and scoped virtual keys. Bring your own provider keys; consumers never see them.",
-  },
-  {
-    title: "Budgets & guardrails",
-    body: "Per-scope budgets and rate limits, plus PII, prompt-injection, and schema guardrails enforced on every request.",
-  },
-  {
-    title: "Usage & billing",
-    body: "Every call metered and priced. Aggregate by model, team, or day; export invoices; alert before budgets blow.",
-  },
-];
+const features = computed(() => messages[locale.value].landing.features);
 </script>
 
 <template>
   <section class="film">
     <div class="container film-inner">
-      <p class="eyebrow">Enterprise LLM gateway</p>
-      <h1 class="hero">One API. Every model.<br />Governed, metered, yours.</h1>
-      <p class="sub muted">
-        Self-hostable control plane on top of LiteLLM — keep your data in your
-        boundary, govern access, and see every token and dollar.
-      </p>
+      <p class="eyebrow">{{ $t("landing.eyebrow") }}</p>
+      <h1 class="hero">{{ $t("landing.heroLine1") }}<br />{{ $t("landing.heroLine2") }}</h1>
+      <p class="sub muted">{{ $t("landing.sub") }}</p>
 
       <div class="card signin">
-        <p class="muted">Dev sign-in (stand-in until OIDC)</p>
+        <p class="muted">{{ $t("landing.signinTitle") }}</p>
         <div class="row">
-          <input v-model="form.userId" placeholder="user id" />
-          <input v-model="form.orgId" placeholder="org id" />
-          <input v-model="form.roles" placeholder="roles (comma)" />
+          <input v-model="form.userId" :placeholder="$t('landing.userId')" />
+          <input v-model="form.orgId" :placeholder="$t('landing.orgId')" />
+          <input v-model="form.roles" :placeholder="$t('landing.roles')" />
           <button class="btn btn-primary" :disabled="!form.orgId" @click="login">
-            Enter console
+            {{ $t("landing.enter") }}
           </button>
         </div>
         <p class="hint muted">
-          Tip: run <code>make seed</code> to get an org id and a ready virtual key.
+          {{ $t("landing.tipPre") }} <code>make seed</code> {{ $t("landing.tipPost") }}
         </p>
       </div>
     </div>

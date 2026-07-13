@@ -36,27 +36,29 @@ const revoke = (id: string) => run(() => store.revoke(id, teamId.value));
 
 <template>
   <section>
-    <h1>Virtual keys</h1>
+    <h1>{{ $t("keys.title") }}</h1>
 
     <div v-if="!teamsStore.items.length" class="card">
       <p class="muted">
-        No teams yet. Create one on the <RouterLink to="/teams">Teams</RouterLink> page,
-        then issue keys here.
+        {{ $t("keys.noTeamsPre") }} <RouterLink to="/teams">{{ $t("keys.teamsLink") }}</RouterLink>
+        {{ $t("keys.noTeamsPost") }}
       </p>
     </div>
 
     <div v-else class="card">
       <div class="row">
-        <label class="muted">Team</label>
+        <label class="muted">{{ $t("keys.team") }}</label>
         <select v-model="teamId">
           <option v-for="t in teamsStore.items" :key="t.id" :value="t.id">
             {{ t.name }}
           </option>
         </select>
-        <button class="btn btn-primary" :disabled="!teamId" @click="issue">Issue key</button>
+        <button class="btn btn-primary" :disabled="!teamId" @click="issue">
+          {{ $t("keys.issue") }}
+        </button>
       </div>
       <p v-if="store.lastIssued" class="issued">
-        New key (shown once): <code>{{ store.lastIssued.key }}</code>
+        {{ $t("keys.newKey") }} <code>{{ store.lastIssued.key }}</code>
       </p>
     </div>
 
@@ -64,7 +66,7 @@ const revoke = (id: string) => run(() => store.revoke(id, teamId.value));
 
     <div v-if="store.items.length" class="card" style="margin-top: 16px">
       <table class="data">
-        <thead><tr><th>Prefix</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>{{ $t("keys.th.prefix") }}</th><th>{{ $t("keys.th.status") }}</th><th></th></tr></thead>
         <tbody>
           <tr v-for="k in store.items" :key="k.id">
             <td><code>{{ k.prefix }}</code></td>
@@ -79,7 +81,7 @@ const revoke = (id: string) => run(() => store.revoke(id, teamId.value));
                 :disabled="k.status !== 'active'"
                 @click="revoke(k.id)"
               >
-                Revoke
+                {{ $t("keys.revoke") }}
               </button>
             </td>
           </tr>
@@ -87,7 +89,7 @@ const revoke = (id: string) => run(() => store.revoke(id, teamId.value));
       </table>
     </div>
     <p v-else-if="teamsStore.items.length" class="muted" style="margin-top: 16px">
-      No keys for this team yet.
+      {{ $t("keys.empty") }}
     </p>
   </section>
 </template>

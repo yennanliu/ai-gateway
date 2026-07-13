@@ -20,11 +20,11 @@ async function submit(): Promise<void> {
 
 <template>
   <section>
-    <h1>Teams</h1>
+    <h1>{{ $t("teams.title") }}</h1>
     <div class="card">
       <form class="row" @submit.prevent="submit">
-        <input v-model="name" placeholder="team name" required />
-        <button class="btn btn-primary" type="submit">Create team</button>
+        <input v-model="name" :placeholder="$t('teams.name')" required />
+        <button class="btn btn-primary" type="submit">{{ $t("teams.create") }}</button>
       </form>
     </div>
 
@@ -32,7 +32,7 @@ async function submit(): Promise<void> {
 
     <div v-if="store.items.length" class="card" style="margin-top: 16px">
       <table class="data">
-        <thead><tr><th>Name</th><th>Team ID</th></tr></thead>
+        <thead><tr><th>{{ $t("teams.th.name") }}</th><th>{{ $t("teams.th.id") }}</th></tr></thead>
         <tbody>
           <tr v-for="t in store.items" :key="t.id">
             <td>{{ t.name }}</td>
@@ -41,6 +41,6 @@ async function submit(): Promise<void> {
         </tbody>
       </table>
     </div>
-    <p v-else class="muted" style="margin-top: 16px">No teams yet — create one to issue keys.</p>
+    <p v-else class="muted" style="margin-top: 16px">{{ $t("teams.empty") }}</p>
   </section>
 </template>

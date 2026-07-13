@@ -24,25 +24,25 @@ async function submit(): Promise<void> {
 
 <template>
   <section>
-    <h1>Budgets</h1>
+    <h1>{{ $t("budgets.title") }}</h1>
     <div class="card">
       <form class="row" @submit.prevent="submit">
         <select v-model="form.scope_type">
           <option>org</option><option>team</option><option>key</option>
         </select>
-        <input v-model="form.scope_id" placeholder="scope id" required />
-        <input v-model="form.limit" placeholder="limit" required />
-        <button class="btn btn-primary" type="submit">Set budget</button>
+        <input v-model="form.scope_id" :placeholder="$t('budgets.scopeId')" required />
+        <input v-model="form.limit" :placeholder="$t('budgets.limit')" required />
+        <button class="btn btn-primary" type="submit">{{ $t("budgets.set") }}</button>
       </form>
     </div>
 
     <p v-if="alerts.length" class="pill pill-wait" style="margin-top: 12px">
-      {{ alerts.length }} budget(s) over threshold
+      {{ $t("budgets.overThreshold", { n: alerts.length }) }}
     </p>
 
     <div v-if="items.length" class="card" style="margin-top: 16px">
       <table class="data">
-        <thead><tr><th>Scope</th><th>Limit</th><th>Spent</th><th>Period</th></tr></thead>
+        <thead><tr><th>{{ $t("budgets.th.scope") }}</th><th>{{ $t("budgets.th.limit") }}</th><th>{{ $t("budgets.th.spent") }}</th><th>{{ $t("budgets.th.period") }}</th></tr></thead>
         <tbody>
           <tr v-for="b in items" :key="b.id">
             <td>{{ b.scope_type }}:<code>{{ b.scope_id.slice(0, 8) }}</code></td>
@@ -53,6 +53,6 @@ async function submit(): Promise<void> {
         </tbody>
       </table>
     </div>
-    <p v-else class="muted" style="margin-top: 16px">No budgets set.</p>
+    <p v-else class="muted" style="margin-top: 16px">{{ $t("budgets.empty") }}</p>
   </section>
 </template>

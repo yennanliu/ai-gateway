@@ -1,7 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
+import { createPinia, setActivePinia } from "pinia";
 import HealthBadge from "@/components/HealthBadge.vue";
 import { healthDisplay } from "@/lib/health";
+
+beforeEach(() => {
+  localStorage.clear();
+  setActivePinia(createPinia());
+});
 
 describe("healthDisplay", () => {
   it("maps ok/ready/healthy to Healthy", () => {
@@ -22,7 +28,10 @@ describe("healthDisplay", () => {
 
 describe("HealthBadge", () => {
   it("renders the mapped label for a status", () => {
-    const wrapper = mount(HealthBadge, { props: { status: "ok" } });
+    const wrapper = mount(HealthBadge, {
+      props: { status: "ok" },
+      global: { plugins: [createPinia()] },
+    });
     expect(wrapper.text()).toBe("Healthy");
     expect(wrapper.classes()).toContain("healthy");
   });
