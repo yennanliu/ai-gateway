@@ -556,6 +556,10 @@ code { color: var(--text); }
   .feature-grid { grid-template-columns: 1fr; }
   .section { padding: 64px 0; }
   .step { gap: 16px; }
+  /* Give diagrams more room on narrow screens so labels don't clip mid-word. */
+  .diagram { padding: 18px; }
+  .diag-plane { padding: 12px; }
+  .diag-box { padding: 12px 14px; }
 }
 
 /* ============================================================
@@ -617,6 +621,11 @@ code { color: var(--text); }
   flex: none; width: 30px; height: 30px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 600; color: #fff; background: var(--grad-accent);
+}
+.step-icon {
+  flex: none; width: 30px; height: 30px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+  background: var(--surface); border: 1px solid var(--border);
 }
 .step-head h2 { font-size: 24px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
 .step-block p { color: var(--text-muted); font-size: 16px; margin: 12px 0; }
