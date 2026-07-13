@@ -537,3 +537,108 @@ code { color: var(--text); }
   .section { padding: 64px 0; }
   .step { gap: 16px; }
 }
+
+/* ============================================================
+   GUIDE PAGE — step-by-step docs (sidebar TOC + content)
+   ============================================================ */
+.guide-header {
+  position: relative; isolation: isolate; overflow: hidden;
+  padding: 88px var(--gutter) 40px; text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.guide-header::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(38% 90% at 15% 0%, rgba(124, 140, 255, 0.20), transparent 60%),
+    radial-gradient(38% 90% at 85% 0%, rgba(255, 122, 24, 0.16), transparent 62%);
+}
+.guide-header .eyebrow { margin-bottom: 18px; }
+.guide-header h1 {
+  font-size: 40px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;
+}
+.guide-header p { color: var(--text-muted); font-size: 18px; max-width: 60ch; margin: 16px auto 0; }
+
+.guide-shell {
+  max-width: var(--maxw); margin: 0 auto;
+  display: grid; grid-template-columns: 232px 1fr; gap: 56px;
+  padding: 48px var(--gutter) 112px;
+}
+
+/* sidebar table of contents */
+.guide-toc { position: sticky; top: calc(var(--nav-h) + 24px); align-self: start; }
+.guide-toc-title {
+  font-size: 12px; font-weight: 500; letter-spacing: .04em; color: var(--text-dim);
+  text-transform: uppercase; margin-bottom: 14px;
+}
+.guide-toc ol { list-style: none; display: flex; flex-direction: column; gap: 2px; counter-reset: toc; }
+.guide-toc a {
+  display: block; padding: 7px 12px; border-radius: 8px;
+  font-size: 14px; color: var(--text-muted); border-left: 2px solid transparent;
+  transition: color .2s, background .2s;
+}
+.guide-toc a:hover { color: var(--text); background: var(--surface); }
+.guide-toc a.active {
+  color: var(--text); background: var(--surface);
+  border-left-color: transparent;
+  background-image: linear-gradient(var(--surface), var(--surface)), var(--grad-accent);
+  background-origin: border-box; background-clip: padding-box, border-box;
+  border-left: 2px solid transparent;
+}
+
+/* content column */
+.guide-main { min-width: 0; max-width: 760px; }
+.guide-intro { color: var(--text-muted); font-size: 17px; margin-bottom: 8px; }
+.guide-intro strong { color: var(--text); font-weight: 500; }
+
+.step-block { padding-top: 40px; margin-top: 40px; border-top: 1px solid var(--border); scroll-margin-top: calc(var(--nav-h) + 24px); }
+.step-block:first-of-type { border-top: 0; margin-top: 16px; padding-top: 0; }
+.step-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.step-num {
+  flex: none; width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600; color: #fff; background: var(--grad-accent);
+}
+.step-head h2 { font-size: 24px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
+.step-block p { color: var(--text-muted); font-size: 16px; margin: 12px 0; }
+.step-block p strong { color: var(--text); font-weight: 500; }
+.step-block ul { color: var(--text-muted); font-size: 16px; margin: 12px 0 12px 4px; padding-left: 20px; }
+.step-block li { margin: 6px 0; }
+.step-block li strong { color: var(--text); font-weight: 500; }
+
+/* screenshot figures */
+figure.shot { margin: 22px 0; }
+figure.shot .frame {
+  border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+  background: var(--bg-alt); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+:root[data-theme="light"] figure.shot .frame { box-shadow: 0 8px 30px rgba(0, 0, 0, 0.10); }
+figure.shot img { display: block; width: 100%; height: auto; }
+figure.shot figcaption { font-size: 13px; color: var(--text-dim); margin-top: 10px; text-align: center; }
+
+/* inline code + code blocks inside the guide */
+.guide-main code { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 2px 6px; border-radius: 5px; font-size: 13px; }
+.guide-main .code { margin: 18px 0; }
+.guide-main .code code { background: none; border: 0; padding: 0; }
+
+/* hint / note callout */
+.hint {
+  display: flex; gap: 14px; margin: 20px 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 2px solid transparent; border-radius: 12px; padding: 16px 18px;
+}
+.hint .hint-ic { flex: none; font-size: 15px; line-height: 1.5; }
+.hint p { margin: 0; font-size: 15px; color: var(--text-muted); }
+.hint strong { color: var(--text); font-weight: 500; }
+.hint code { font-size: 12.5px; }
+
+/* guide footer nav */
+.guide-next {
+  display: flex; flex-wrap: wrap; gap: 14px; margin-top: 48px; padding-top: 32px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 860px) {
+  .guide-shell { grid-template-columns: 1fr; gap: 0; padding-top: 32px; }
+  .guide-toc { display: none; }
+  .guide-header h1 { font-size: 30px; }
+}

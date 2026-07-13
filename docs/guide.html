@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guide — AI Gateway</title>
+  <meta name="description" content="A hands-on, step-by-step guide to running the AI Gateway: start the stack, sign in, register models, issue virtual keys, make your first request, and track usage & budgets." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script>
+    // Set theme before first paint to avoid a flash of the wrong theme.
+    (function () {
+      try {
+        var saved = localStorage.getItem("theme");
+        var prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+        document.documentElement.setAttribute("data-theme", saved || (prefersLight ? "light" : "dark"));
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23000000'/%3E%3Cpath d='M8 22 L16 8 L24 22 M11 18 H21' stroke='%23ffffff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+</head>
+<body>
+
+  <!-- ============ GLOBAL NAV ============ -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html#top" aria-label="AI Gateway home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="24" height="24"><rect width="32" height="32" rx="7" fill="none" stroke="#3d3d3d"/><path d="M8 22 L16 8 L24 22 M11 18 H21" stroke="#ffffff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="brand-text">AI&nbsp;Gateway</span>
+      </a>
+
+      <nav class="nav" id="nav">
+        <a href="index.html#overview">Overview</a>
+        <a href="index.html#features">Features</a>
+        <a href="index.html#architecture">Architecture</a>
+        <a href="guide.html" class="active">Guide</a>
+      </nav>
+
+      <div class="topbar-actions">
+        <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway" target="_blank" rel="noopener">GitHub ↗</a>
+        <a class="btn btn-primary" href="#start">Start</a>
+      </div>
+
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle color theme" title="Toggle light / dark theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ HEADER ============ -->
+  <header class="guide-header">
+    <span class="eyebrow">Guide</span>
+    <h1>Run the gateway, end to end</h1>
+    <p>Start the full stack, sign in to the console, register a model, issue a virtual key, and send your
+      first governed request — then watch the tokens, cost, and budgets update in real time.</p>
+  </header>
+
+  <div class="guide-shell">
+
+    <!-- ============ SIDEBAR TOC ============ -->
+    <aside class="guide-toc">
+      <div class="guide-toc-title">On this page</div>
+      <ol>
+        <li><a href="#start">Start the gateway</a></li>
+        <li><a href="#signin">Sign in to the console</a></li>
+        <li><a href="#dashboard">Read the dashboard</a></li>
+        <li><a href="#models">Register a model</a></li>
+        <li><a href="#teams">Create teams</a></li>
+        <li><a href="#keys">Issue a virtual key</a></li>
+        <li><a href="#request">Make your first request</a></li>
+        <li><a href="#usage">Track usage &amp; cost</a></li>
+        <li><a href="#budgets">Set a budget</a></li>
+        <li><a href="#api">Use the API directly</a></li>
+      </ol>
+    </aside>
+
+    <!-- ============ CONTENT ============ -->
+    <main class="guide-main">
+      <p class="guide-intro">
+        This walkthrough uses the <strong>one-command Docker stack</strong>, which boots the whole gateway
+        pre-seeded with demo data and a fake upstream provider — so every step below is real, with
+        <strong>no cloud account and no provider API key</strong>. You only need Docker installed.
+      </p>
+
+      <!-- 1 -->
+      <section class="step-block" id="start">
+        <div class="step-head"><span class="step-num">1</span><h2>Start the gateway</h2></div>
+        <p>From the repository root, bring the whole stack up in Docker and leave it running:</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>make docker-up</code></pre>
+        </div>
+        <p>This builds and starts four services and seeds a demo organization:</p>
+        <ul>
+          <li><strong>Control plane</strong> (governance API) — <code>http://localhost:8080</code></li>
+          <li><strong>LiteLLM proxy</strong> (the OpenAI-compatible endpoint) — <code>http://localhost:4000</code></li>
+          <li><strong>Admin console</strong> — <code>http://localhost:8081</code></li>
+          <li><strong>Stub provider</strong> (fake upstream, so requests need no real key) — <code>http://localhost:9099</code></li>
+        </ul>
+        <p>When it finishes, it prints the seeded <strong>org id</strong> and a ready-to-use
+          <strong>virtual key</strong> — keep both handy:</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>AI Gateway is up and running:
+  Control plane      http://localhost:8080   (/docs for Swagger UI)
+  LiteLLM proxy      http://localhost:4000
+  Admin UI           http://localhost:8081
+  Stub provider      http://localhost:9099
+
+  org:  3b9d4553c6e44513b2efecc78a707702   (sign in with this org id)
+  key:  sk-ag-…                            <span class="c-cmt"># shown once</span></code></pre>
+        </div>
+        <div class="hint">
+          <span class="hint-ic">💡</span>
+          <p>Your <code>org</code> id and key will differ from the example above — copy the values your
+            own run prints. Stop everything later with <code>make docker-down</code>.</p>
+        </div>
+      </section>
+
+      <!-- 2 -->
+      <section class="step-block" id="signin">
+        <div class="step-head"><span class="step-num">2</span><h2>Sign in to the console</h2></div>
+        <p>Open <a href="http://localhost:8081" target="_blank" rel="noopener"><code>http://localhost:8081</code></a>.
+          Authentication is a dev stand-in until SSO lands, so you sign in by identity rather than password:
+          enter the user id <code>admin</code>, paste the <strong>org id</strong> from step 1, keep the role
+          <code>org-admin</code>, and choose <strong>Enter console</strong>.</p>
+        <figure class="shot">
+          <div class="frame"><img src="assets/guide/01-signin.png" alt="AI Gateway console dev sign-in screen with user id, org id, and role fields" loading="lazy" /></div>
+          <figcaption>The console sign-in — user id, org id, and role.</figcaption>
+        </figure>
+        <div class="hint">
+          <span class="hint-ic">🔑</span>
+          <p><strong>org-admin</strong> is the top role: an org-admin has every team-level permission across
+            the whole organization.</p>
+        </div>
+      </section>
+
+      <!-- 3 -->
+      <section class="step-block" id="dashboard">
+        <div class="step-head"><span class="step-num">3</span><h2>Read the dashboard</h2></div>
+        <p>The dashboard is the at-a-glance view of your org: the control-plane health, spend so far,
+          total requests, and how many budgets are approaching their limit. On a fresh seed you'll already
+          see activity from the demo data.</p>
+        <figure class="shot">
+          <div class="frame"><img src="assets/guide/02-dashboard.png" alt="Dashboard showing Governance API healthy, total cost, request count, and budget alerts" loading="lazy" /></div>
+          <figcaption>Dashboard — health, cost, requests, and budget alerts.</figcaption>
+        </figure>
+      </section>
+
+      <!-- 4 -->
+      <section class="step-block" id="models">
+        <div class="step-head"><span class="step-num">4</span><h2>Register a model</h2></div>
+        <p>The <strong>model registry</strong> is the source of truth for what callers can use. Each entry maps
+          a friendly <strong>public name</strong> (what clients ask for) to a <strong>provider</strong> and the
+          real upstream <strong>model</strong>. Add one with the form, or start from the three seeded demo models.</p>
+        <figure class="shot">
+          <div class="frame"><img src="assets/guide/03-models.png" alt="Model registry listing demo-gpt, demo-gpt-4o, and demo-claude with provider and status" loading="lazy" /></div>
+          <figcaption>Model registry — public name → provider → upstream model.</figcaption>
+        </figure>
+        <div class="hint">
+          <span class="hint-ic">⚙️</span>
+          <p>The registry is the source of truth; the LiteLLM proxy config is a <strong>derived artifact</strong>
+            compiled from it, with credentials emitted as environment references — never plaintext.</p>
+        </div>
+      </section>
+
+      <!-- 5 -->
+      <section class="step-block" id="teams">
+        <div class="step-head"><span class="step-num">5</span><h2>Create teams</h2></div>
+        <p>Everything is scoped <code>org › team › user › app</code>. Teams are how you group people and
+          attribute spend. The seed ships three — Platform, Research, and Support — and you can add more from
+          the <strong>Teams</strong> page.</p>
+        <figure class="shot">
+          <div class="frame"><img src="assets/guide/04-teams.png" alt="Teams page listing Platform, Research, and Support with their team IDs" loading="lazy" /></div>
+          <figcaption>Teams — the unit of grouping and cost attribution.</figcaption>
+        </figure>
+      </section>
+
+      <!-- 6 -->
+      <section class="step-block" id="keys">
+        <div class="step-head"><span class="step-num">6</span><h2>Issue a virtual key</h2></div>
+        <p>Consumers never touch your provider keys — they get a scoped <strong>virtual key</strong>. Pick a team,
+          choose <strong>Issue key</strong>, and the full key is shown <strong>exactly once</strong>. After that only
+          a display prefix and a hash are stored, and you can <strong>Revoke</strong> a key at any time.</p>
+        <figure class="shot">
+          <div class="frame"><img src="assets/guide/05-keys.png" alt="Virtual keys page with a team selector, Issue key button, and a table of key prefixes with revoke actions" loading="lazy" /></div>
+          <figcaption>Virtual keys — issue per team; only the prefix + hash are stored.</figcaption>
+        </figure>
+      </section>
+
+      <!-- 7 -->
+      <section class="step-block" id="request">
+        <div class="step-head"><span class="step-num">7</span><h2>Make your first request</h2></div>
+        <p>Point any OpenAI-compatible client at the proxy on port <code>4000</code> and authenticate with your
+          virtual key. The wire shape is exactly OpenAI's — only the base URL and the key change:</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>export VIRTUAL_KEY=sk-ag-…   <span class="c-cmt"># the key from step 1</span>
+
+curl <span class="c-str">http://localhost:4000/v1/chat/completions</span> \
+  -H <span class="c-str">"Authorization: Bearer $VIRTUAL_KEY"</span> \
+  -H <span class="c-str">"Content-Type: application/json"</span> \
+  -d <span class="c-str">'{
+    "model": "demo-gpt",
+    "messages": [{"role":"user","content":"Say hello"}]
+  }'</span></code></pre>
+        </div>
+        <p>You get a standard chat-completion back — served here by the stub upstream — with a token count the
+          gateway uses to meter and price the call:</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>{
+  "model": "demo-gpt",
+  "object": "chat.completion",
+  "choices": [{ "index": 0, "finish_reason": "stop",
+    "message": { "role": "assistant", "content": "Hello from the AI Gateway stub." } }],
+  "usage": { "prompt_tokens": 8, "completion_tokens": 7, "total_tokens": 15 }
+}</code></pre>
+        </div>
+        <div class="hint">
+          <span class="hint-ic">🛡️</span>
+          <p>A wrong or revoked key is rejected before it ever reaches a provider — the proxy calls back into
+            the control-plane DB to authenticate every request and returns <code>401 invalid API key</code>.</p>
+        </div>
+      </section>
+
+      <!-- 8 -->
+      <section class="step-block" id="usage">
+        <div class="step-head"><span class="step-num">8</span><h2>Track usage &amp; cost</h2></div>
+        <p>Every request you just made is metered, priced, and attributed. The <strong>Usage</strong> page breaks
+          spend down by model — prompt and completion tokens, cost, and request counts — and the same data can be
+          grouped by team or by day for invoices and CSV export.</p>
+        <figure class="shot">
+          <div class="frame"><img src="assets/guide/06-usage.png" alt="Usage page with total cost, request count, and a per-model breakdown of tokens, cost, and requests" loading="lazy" /></div>
+          <figcaption>Usage — per-model tokens, cost, and request counts.</figcaption>
+        </figure>
+      </section>
+
+      <!-- 9 -->
+      <section class="step-block" id="budgets">
+        <div class="step-head"><span class="step-num">9</span><h2>Set a budget</h2></div>
+        <p>Attach a spending <strong>limit</strong> at any scope — key, app, user, team, or org. Budgets resolve
+          <strong>most-specific-wins</strong> (<code>key › app › user › team › org</code>), and the console flags
+          any that cross their alert threshold before they overrun.</p>
+        <figure class="shot">
+          <div class="frame"><img src="assets/guide/07-budgets.png" alt="Budgets page with a set-budget form, an over-threshold alert, and a table of scope, limit, spent, and period" loading="lazy" /></div>
+          <figcaption>Budgets — limits per scope, with over-threshold alerts.</figcaption>
+        </figure>
+      </section>
+
+      <!-- 10 -->
+      <section class="step-block" id="api">
+        <div class="step-head"><span class="step-num">10</span><h2>Use the API directly</h2></div>
+        <p>Everything the console does is the control-plane REST API — orgs, teams, keys, models, budgets, and
+          usage. Explore and try it interactively in the Swagger UI at
+          <a href="http://localhost:8080/docs" target="_blank" rel="noopener"><code>http://localhost:8080/docs</code></a>.
+          Authenticate the same way the console does, with the <code>X-User-Id</code>, <code>X-Org-Id</code>, and
+          <code>X-Org-Roles</code> headers.</p>
+        <figure class="shot">
+          <div class="frame"><img src="assets/guide/08-swagger.png" alt="Swagger UI for the AI Gateway Governance API showing system and orgs endpoints" loading="lazy" /></div>
+          <figcaption>The Governance API in Swagger UI (<code>/docs</code>).</figcaption>
+        </figure>
+        <p>A quick health/version check needs no console at all:</p>
+        <div class="code" data-copy>
+          <button class="copy-btn" aria-label="Copy">Copy</button>
+          <pre><code>curl -s <span class="c-str">http://localhost:8080/api/v1/version</span>
+<span class="c-cmt"># → {"version":"0.1.0","litellm":"1.91.1"}</span></code></pre>
+        </div>
+
+        <div class="guide-next">
+          <a class="btn btn-secondary" href="index.html#architecture">How it works — architecture</a>
+          <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway/blob/main/doc/system-design.md" target="_blank" rel="noopener">System design ↗</a>
+          <a class="btn btn-ghost" href="https://github.com/yennanliu/ai-gateway/blob/main/doc/runbook.md" target="_blank" rel="noopener">Runbook ↗</a>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="20" height="20"><rect width="32" height="32" rx="7" fill="none" stroke="#3d3d3d"/><path d="M8 22 L16 8 L24 22 M11 18 H21" stroke="#ffffff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span>AI Gateway</span>
+      </div>
+      <nav class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="guide.html">Guide</a>
+        <a href="https://github.com/yennanliu/ai-gateway" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/yennanliu/ai-gateway/blob/main/doc/system-design.md" target="_blank" rel="noopener">System design</a>
+      </nav>
+      <p class="footer-note">Built on LiteLLM Proxy · Self-hostable · Open source.</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    // Scroll-spy for the guide sidebar TOC.
+    (function () {
+      var links = Array.prototype.slice.call(document.querySelectorAll(".guide-toc a"));
+      if (!("IntersectionObserver" in window) || !links.length) return;
+      var byId = {};
+      links.forEach(function (a) { byId[a.getAttribute("href")] = a; });
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            links.forEach(function (l) { l.classList.remove("active"); });
+            var active = byId["#" + entry.target.id];
+            if (active) active.classList.add("active");
+          }
+        });
+      }, { rootMargin: "-20% 0px -70% 0px", threshold: 0 });
+      document.querySelectorAll(".step-block").forEach(function (s) { observer.observe(s); });
+    })();
+  </script>
+</body>
+</html>
