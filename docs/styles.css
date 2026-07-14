@@ -80,20 +80,6 @@
   --shadow-card: 0 8px 32px rgba(180, 88, 55, 0.08);
 }
 
-/* warm frosted page wash — layered radial glows over cream */
-body::before {
-  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(60% 50% at 30% 0%, #fff4e0, transparent 70%),
-    radial-gradient(55% 55% at 80% 20%, #f4e4d4, transparent 70%);
-  opacity: 1;
-}
-:root[data-theme="dark"] body::before {
-  background:
-    radial-gradient(60% 50% at 30% 0%, rgba(217, 139, 95, 0.10), transparent 70%),
-    radial-gradient(55% 55% at 80% 20%, rgba(228, 184, 148, 0.06), transparent 70%);
-}
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; scroll-padding-top: var(--nav-h); }
@@ -738,22 +724,10 @@ figure.shot figcaption { font-size: 13px; color: var(--text-dim); margin-top: 10
   -webkit-backdrop-filter: blur(12px) saturate(140%);
 }
 
-/* Frosted-glass elevation on the elevated surfaces. */
-.term,
-.plane-card,
-.deploy-card,
-.invariant,
-.diagram,
-.table-wrap,
-.stats,
-.feature-grid,
-.stack-item,
-.code,
-.callout,
-.hint {
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-}
+/* Soft, warm elevation on the elevated surfaces. (These sit on flat,
+   opaque section backgrounds, so a backdrop-filter would blur nothing
+   and only cost offscreen rendering — the frosting lives on the sticky
+   nav and .btn-secondary, which actually overlap varied content.) */
 .term,
 .plane-card,
 .deploy-card,
@@ -780,11 +754,9 @@ figure.shot .frame { border-radius: 14px; box-shadow: var(--shadow-card); }
 .dot-y { background: #e4b894; }
 .dot-g { background: #a8a05f; }
 
-/* Mobile: halve the blur for performance (per Granola spec). */
+/* Mobile: soften the one remaining live frost for performance. */
 @media (max-width: 560px) {
-  .term, .plane-card, .deploy-card, .invariant, .diagram,
-  .table-wrap, .stats, .feature-grid, .stack-item, .code,
-  .callout, .hint, .btn-secondary {
+  .btn-secondary {
     backdrop-filter: blur(8px) saturate(140%);
     -webkit-backdrop-filter: blur(8px) saturate(140%);
   }

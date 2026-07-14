@@ -14,7 +14,6 @@
     (function () {
       try {
         var saved = localStorage.getItem("theme");
-        var prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
         var theme = saved || "light";
         document.documentElement.setAttribute("data-theme", theme);
       } catch (e) {
