@@ -1,73 +1,66 @@
 /* ============================================================
    AI Gateway — site styles
-   Design system: Granola — "warm glass"
-   Editorial serif over soft frosted surfaces on warm cream.
-   Muted terracotta accent. Calm, considered, indie-premium.
-   Cream is the default; a warm-espresso dark variant mirrors it.
+   Design system: OpenAI Editorial Minimalism
+   Strictly monochrome, generous whitespace, flat surfaces,
+   colour reserved for imagery. Quiet confidence.
    ============================================================ */
 
-:root, :root[data-theme="light"] {
-  /* palette — warm cream, frosted warm-white surfaces (default) */
-  --bg: #faf8f2;
-  --bg-alt: #f4ece0;
-  --surface: rgba(255, 251, 244, 0.72);
-  --surface-2: rgba(244, 228, 212, 0.66);
-  --text: #1a1814;
-  --text-muted: #6a5f52;
-  --text-dim: #9c8f7e;
-  --border: rgba(26, 24, 20, 0.08);
-  --border-strong: rgba(26, 24, 20, 0.16);
-  --action: #b45837;
-  --action-text: #fff8f0;
-  --focus: #b45837;
-  --nav-bg: rgba(250, 248, 242, 0.72);
-  --sel: rgba(180, 88, 55, 0.18);
-  --feature-filter: none;
-  /* warm accents */
-  --accent: #b45837;
-  --accent-soft: #e4b894;
-  --tile-warm: #d98b5f;
-  --tile-cool: #b98a3d;
+:root, :root[data-theme="dark"] {
+  /* palette — monochrome, near-black steps (dark, default) */
+  --bg: #000000;
+  --bg-alt: #0d0d0d;
+  --surface: #1a1a1a;
+  --surface-2: #242424;
+  --text: #ffffff;
+  --text-muted: #a1a1a1;
+  --text-dim: #6e6e6e;
+  --border: #2e2e2e;
+  --border-strong: #3d3d3d;
+  --action: #ffffff;
+  --action-text: #000000;
+  --focus: #ffffff;
+  --nav-bg: rgba(0, 0, 0, 0.72);
+  --sel: rgba(255, 255, 255, 0.16);
+  --feature-filter: grayscale(1);
+  /* colour appears only in imagery/accents */
+  --tile-warm: #f5a623;
+  --tile-cool: #7c8cff;
+
 }
 
-:root[data-theme="dark"] {
-  /* palette — warm espresso, roasted browns (dark) */
-  --bg: #1a1512;
-  --bg-alt: #221b16;
-  --surface: rgba(58, 46, 38, 0.62);
-  --surface-2: rgba(74, 58, 46, 0.60);
-  --text: #f5ece0;
-  --text-muted: #b8a693;
-  --text-dim: #8a7866;
-  --border: rgba(245, 236, 224, 0.10);
-  --border-strong: rgba(245, 236, 224, 0.20);
-  --action: #d98b5f;
-  --action-text: #1a1512;
-  --focus: #d98b5f;
-  --nav-bg: rgba(26, 21, 18, 0.72);
-  --sel: rgba(217, 139, 95, 0.24);
-  --feature-filter: none;
-  --accent: #d98b5f;
-  --accent-soft: #e4b894;
-  --tile-warm: #d98b5f;
-  --tile-cool: #cbb76a;
+:root[data-theme="light"] {
+  /* palette — monochrome, near-white steps (light) */
+  --bg: #ffffff;
+  --bg-alt: #f7f7f8;
+  --surface: #f2f2f3;
+  --surface-2: #e8e8ea;
+  --text: #0d0d0d;
+  --text-muted: #5d5d5d;
+  --text-dim: #8e8e8e;
+  --border: #e5e5e7;
+  --border-strong: #d0d0d3;
+  --action: #0d0d0d;
+  --action-text: #ffffff;
+  --focus: #0d0d0d;
+  --nav-bg: rgba(255, 255, 255, 0.78);
+  --sel: rgba(0, 0, 0, 0.12);
+  --feature-filter: grayscale(1) contrast(0.9);
 }
 
 :root {
-  /* imagery gradients — a warm, harmonious clay/amber/sage family */
-  --grad-blue:   linear-gradient(135deg, #b45837, #d98b5f);
-  --grad-green:  linear-gradient(135deg, #8a7f3d, #cbb76a);
-  --grad-orange: linear-gradient(135deg, #c96a2e, #e4b894);
-  --grad-violet: linear-gradient(135deg, #9c5a5f, #d99f8f);
-  --grad-teal:   linear-gradient(135deg, #5f8a7a, #9ecab3);
-  --grad-coral:  linear-gradient(135deg, #c25742, #e8a07f);
-  --grad-sky:    linear-gradient(135deg, #7a7f9c, #b0b4cf);
-  --grad-gold:   linear-gradient(135deg, #b98a3d, #e4c98a);
-  --grad-accent: linear-gradient(90deg, #b45837 0%, #cf7a4a 50%, #e4b894 100%);
+  /* imagery gradients — the ONLY place colour lives (theme-independent) */
+  --grad-blue:   linear-gradient(135deg, #3d47c9, #7c8cff);
+  --grad-green:  linear-gradient(135deg, #1f9d55, #7be07b);
+  --grad-orange: linear-gradient(135deg, #ff7a18, #f5c04a);
+  --grad-violet: linear-gradient(135deg, #a640d8, #ff6ec7);
+  --grad-teal:   linear-gradient(135deg, #0ea5b7, #4fe0c8);
+  --grad-coral:  linear-gradient(135deg, #e0245e, #ff8a5c);
+  --grad-sky:    linear-gradient(135deg, #2f6fe0, #52d1ff);
+  --grad-gold:   linear-gradient(135deg, #d9911f, #f5d76e);
+  --grad-accent: linear-gradient(90deg, #7c8cff 0%, #c56be0 45%, #ff9770 100%);
 
-  /* type — editorial serif display, humanist sans body */
-  --font-display: "Fraunces", "PP Editorial New", "Tiempos Headline", Georgia, "Times New Roman", serif;
-  --font: "Inter", "Söhne", system-ui, -apple-system, sans-serif;
+  /* type */
+  --font: "OpenAI Sans", "Söhne", "Inter", system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
 
   /* layout — 4px grid, narrow reading column */
@@ -76,8 +69,8 @@
   --gutter: 24px;
   --nav-h: 60px;
 
-  /* elevation — soft, warm shadow */
-  --shadow-card: 0 8px 32px rgba(180, 88, 55, 0.08);
+  /* elevation — flat aesthetic, minimal shadow */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -224,16 +217,16 @@ code {
   content: ""; position: absolute; inset: -20% -10% auto -10%; height: 120%;
   z-index: -1; pointer-events: none;
   background:
-    radial-gradient(42% 55% at 18% 8%, rgba(228, 184, 148, 0.45), transparent 62%),
-    radial-gradient(40% 55% at 85% 4%, rgba(180, 88, 55, 0.16), transparent 60%),
-    radial-gradient(50% 60% at 60% 95%, rgba(244, 228, 212, 0.55), transparent 64%);
-  filter: blur(8px);
+    radial-gradient(42% 55% at 18% 8%, rgba(124, 140, 255, 0.30), transparent 60%),
+    radial-gradient(40% 55% at 85% 4%, rgba(255, 122, 24, 0.24), transparent 60%),
+    radial-gradient(50% 60% at 60% 95%, rgba(31, 157, 85, 0.18), transparent 62%);
+  filter: blur(6px);
 }
-:root[data-theme="dark"] .hero::before {
+:root[data-theme="light"] .hero::before {
   background:
-    radial-gradient(42% 55% at 18% 8%, rgba(217, 139, 95, 0.20), transparent 62%),
-    radial-gradient(40% 55% at 85% 4%, rgba(180, 88, 55, 0.16), transparent 60%),
-    radial-gradient(50% 60% at 60% 95%, rgba(203, 183, 106, 0.10), transparent 64%);
+    radial-gradient(42% 55% at 18% 8%, rgba(124, 140, 255, 0.28), transparent 60%),
+    radial-gradient(40% 55% at 85% 4%, rgba(255, 122, 24, 0.22), transparent 60%),
+    radial-gradient(50% 60% at 60% 95%, rgba(31, 157, 85, 0.16), transparent 62%);
 }
 .hero-grid {
   max-width: var(--col); margin: 0 auto;
@@ -518,9 +511,9 @@ code { color: var(--text); }
 .cta::before {
   content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background:
-    radial-gradient(38% 80% at 12% 50%, rgba(228, 184, 148, 0.40), transparent 62%),
-    radial-gradient(40% 90% at 88% 50%, rgba(180, 88, 55, 0.14), transparent 62%),
-    radial-gradient(50% 70% at 50% 120%, rgba(244, 228, 212, 0.50), transparent 60%);
+    radial-gradient(38% 80% at 12% 50%, rgba(124, 140, 255, 0.22), transparent 60%),
+    radial-gradient(40% 90% at 88% 50%, rgba(255, 122, 24, 0.20), transparent 62%),
+    radial-gradient(50% 70% at 50% 120%, rgba(31, 157, 85, 0.16), transparent 60%);
 }
 .cta-inner h2 { font-size: 36px; font-weight: 600; letter-spacing: -0.02em; }
 .cta-inner p { color: var(--text-muted); font-size: 18px; max-width: 52ch; margin: 16px auto 0; }
@@ -580,8 +573,8 @@ code { color: var(--text); }
 .guide-header::before {
   content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background:
-    radial-gradient(38% 90% at 15% 0%, rgba(228, 184, 148, 0.42), transparent 62%),
-    radial-gradient(38% 90% at 85% 0%, rgba(180, 88, 55, 0.14), transparent 62%);
+    radial-gradient(38% 90% at 15% 0%, rgba(124, 140, 255, 0.20), transparent 60%),
+    radial-gradient(38% 90% at 85% 0%, rgba(255, 122, 24, 0.16), transparent 62%);
 }
 .guide-header .eyebrow { margin-bottom: 18px; }
 .guide-header h1 {
@@ -689,75 +682,4 @@ figure.shot figcaption { font-size: 13px; color: var(--text-dim); margin-top: 10
   .guide-shell { grid-template-columns: 1fr; gap: 0; padding-top: 32px; }
   .guide-toc { display: none; }
   .guide-header h1 { font-size: 30px; }
-}
-
-/* ============================================================
-   GRANOLA — warm-glass overrides
-   Editorial serif display, frosted surfaces, soft radii,
-   terracotta accents. Appended so it wins by source order.
-   ============================================================ */
-
-/* Editorial serif for display headings; body stays humanist sans. */
-.hero h1,
-.section h2,
-.cta-inner h2,
-.guide-header h1,
-.guide-part h2,
-.step-head h2,
-.plane-card h3,
-.deploy-card h3 {
-  font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-.hero h1 { font-weight: 400; }
-.brand-text { font-family: var(--font-display); font-weight: 500; letter-spacing: 0; }
-.eyebrow, .kicker { color: var(--accent); }
-
-/* Buttons — softer rectangles, not full pills (Granola). */
-.btn { border-radius: 10px; }
-.btn-lg { border-radius: 12px; }
-.btn-secondary {
-  background: var(--surface);
-  border-color: var(--border);
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
-}
-
-/* Soft, warm elevation on the elevated surfaces. (These sit on flat,
-   opaque section backgrounds, so a backdrop-filter would blur nothing
-   and only cost offscreen rendering — the frosting lives on the sticky
-   nav and .btn-secondary, which actually overlap varied content.) */
-.term,
-.plane-card,
-.deploy-card,
-.invariant,
-.diagram,
-.table-wrap,
-.stats,
-.feature-grid { border-radius: 14px; box-shadow: var(--shadow-card); }
-.plane-card:hover, .feature:hover { box-shadow: 0 10px 40px rgba(180, 88, 55, 0.12); }
-
-/* Terracotta wordmark — CSS beats the inline stroke attributes. */
-.brand-mark svg path { stroke: var(--accent); }
-.brand-mark svg rect { stroke: var(--accent-soft); }
-
-/* Warm-lit icon tiles and step numerals. */
-.feature-ic, .step-num { box-shadow: 0 4px 14px rgba(180, 88, 55, 0.18); }
-
-/* Screenshot frames pick up the warm shadow + softer corner. */
-figure.shot .frame { border-radius: 14px; box-shadow: var(--shadow-card); }
-:root[data-theme="light"] figure.shot .frame { box-shadow: var(--shadow-card); }
-
-/* Terminal dots regain their traffic-light warmth on cream. */
-.dot-r { background: #d98b5f; }
-.dot-y { background: #e4b894; }
-.dot-g { background: #a8a05f; }
-
-/* Mobile: soften the one remaining live frost for performance. */
-@media (max-width: 560px) {
-  .btn-secondary {
-    backdrop-filter: blur(8px) saturate(140%);
-    -webkit-backdrop-filter: blur(8px) saturate(140%);
-  }
 }
