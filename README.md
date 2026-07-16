@@ -143,6 +143,51 @@ Building per the [implementation plan](doc/implementation-plan.md), test-first:
   (add `--profile scale` for Postgres + Redis).
 - **Kubernetes:** `helm upgrade --install ai-gateway deploy/helm/ai-gateway ...`
   (proxy autoscales via HPA).
+- **AWS (CDK):** one-stack deploy of both planes + admin UI to ECS Fargate behind
+  an ALB, with RDS PostgreSQL as the source of truth and Bedrock providers via IAM
+  (no API keys). See below and the [AWS deployment guide](doc/aws-cdk-deployment.md).
 - Operations, upgrades, secrets, scaling, and incident response: [`doc/runbook.md`](doc/runbook.md).
+
+### AWS (CDK) quickstart
+
+The CDK app lives in [`ai-gateway-stack/`](ai-gateway-stack/) (TypeScript). Phase 1
+deploys a single stack that serves a governed request end to end: an Application
+Load Balancer path-routed to three ECS Fargate services (admin UI on `/`, control
+plane on `/api/*` `/docs`, data plane on `/v1/*`), backed by RDS PostgreSQL shared
+by both planes, with DB credentials in Secrets Manager. There is no shared
+filesystem — the data plane runs `scripts/compile_config.py` at boot to generate
+its LiteLLM config from the DB.
+
+```
+Internet ─▶ ALB :80
+              ├── /            ─▶ Admin UI      (Fargate)
+              ├── /api/* /docs ─▶ Control plane (Fargate) ─┐
+              └── /v1/*        ─▶ Data plane    (Fargate) ─┤ self-compiles config
+                                                           │
+                              RDS PostgreSQL ◀──both planes, source of truth
+```
+
+**Prerequisites:** Node 20+, Docker running (images build locally as CDK assets),
+AWS credentials. Bootstrap once per account/region: `npx cdk bootstrap`.
+
+```bash
+cd ai-gateway-stack
+npm install
+npm run build                          # tsc
+npx cdk synth                          # render CloudFormation (no AWS calls)
+npx cdk deploy -c appName=ai-gateway -c version=v1   # build + push images, create the stack
+```
+
+Outputs include `AdminUiUrl`, `ControlPlaneUrl`, and `GatewayUrl`. To serve a real
+request with no API keys: enable model access in the **Amazon Bedrock** console,
+register a `bedrock` model in the admin UI, then roll the data plane so it
+recompiles its config (`aws ecs update-service --cluster ai-gateway-v1-cluster --service
+ai-gateway-v1-data-plane --force-new-deployment`), and call
+`POST {GatewayUrl}/chat/completions` with a virtual key. Tear down with
+`npx cdk destroy -c appName=ai-gateway -c version=v1`.
+
+Full architecture, rationale, the phased rollout (HA, scale, multi-tenancy, CI/CD),
+security, and cost: [`doc/aws-cdk-deployment.md`](doc/aws-cdk-deployment.md);
+stack-specific commands: [`ai-gateway-stack/README.md`](ai-gateway-stack/README.md).
 
 [uv]: https://docs.astral.sh/uv/
