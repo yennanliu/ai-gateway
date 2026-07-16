@@ -37,6 +37,15 @@ def _wait_healthy(url: str, timeout: float = 40.0) -> None:
 
 @pytest.fixture(scope="session")
 def base_url(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
+    # Point the suite at an already-running deployment (e.g. the AWS ALB) instead
+    # of booting a local server. Useful for smoke-testing a real environment.
+    remote = os.environ.get("AIGW_E2E_BASE_URL")
+    if remote:
+        url = remote.rstrip("/")
+        _wait_healthy(url)
+        yield url
+        return
+
     db_path = tmp_path_factory.mktemp("e2e") / "e2e.db"
     env = {**os.environ, "AIGW_DATABASE_URL": f"sqlite:///{db_path}"}
 
