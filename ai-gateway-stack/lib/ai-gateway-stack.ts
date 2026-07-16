@@ -339,7 +339,7 @@ export class AiGatewayStack extends Stack {
     });
 
     // =====================================================================
-    // Optional · LiteLLM's own Admin UI (dev/demo) — enable with `-c litellmUi=true`
+    // Optional · LiteLLM's own Admin UI (dev/demo) — ON by default; disable with `-c litellmUi=false`
     // =====================================================================
     // A SEPARATE, isolated LiteLLM proxy that runs LiteLLM's *native* admin UI
     // on its OWN throwaway Postgres. It deliberately does not touch the governed
@@ -353,9 +353,10 @@ export class AiGatewayStack extends Stack {
     // granted NO provider (Bedrock) permissions, so even the known dev master
     // key cannot turn it into an open proxy. Postgres runs as an in-task sidecar
     // (ephemeral — the LiteLLM key store resets on task restart, which is fine
-    // for a demo). Tear down by redeploying without the flag.
+    // for a demo). Tear down by redeploying with `-c litellmUi=false`.
     const litellmUiCtx = this.node.tryGetContext('litellmUi');
-    const enableLiteLLMUi = litellmUiCtx === true || litellmUiCtx === 'true';
+    // Enabled by default; opt out explicitly with `-c litellmUi=false`.
+    const enableLiteLLMUi = !(litellmUiCtx === false || litellmUiCtx === 'false');
     if (enableLiteLLMUi) {
       const LLM_UI_PORT = 4000; // LiteLLM's default listen port (inside the task)
       const LLM_UI_EDGE = 4001; // public ALB listener for the native UI
