@@ -359,20 +359,33 @@ export class AiGatewayStack extends Stack {
     if (enableLiteLLMUi) {
       const LLM_UI_PORT = 4000; // LiteLLM's default listen port (inside the task)
       const LLM_UI_EDGE = 4001; // public ALB listener for the native UI
-      // Dev master key: controls only THIS isolated demo instance (no real data,
-      // no provider access). You can also log in with it instead of the password.
-      const litellmUiMasterKey = 'sk-aigw-litellm-ui-dev';
 
-      // UI login password is generated (not guessable) and kept in Secrets
-      // Manager; username is `admin`. Fetch it after deploy (see output).
+      // UI login password AND master key are both generated (not known constants)
+      // and kept in Secrets Manager, so the public listener has no guessable admin
+      // credential. The master key controls only THIS isolated demo instance (no
+      // real data, no provider access) and can also log in to the UI. LiteLLM
+      // matches the master key with a plain constant-time compare, so no `sk-`
+      // prefix is needed. Fetch both after deploy (see outputs).
       const uiLoginSecret = new secretsmanager.Secret(this, 'LiteLLMUiLogin', {
         secretName: `${resourceName}-litellm-ui-login`,
-        description: 'LiteLLM native Admin UI (dev) — login password for user "admin"',
+        description: 'LiteLLM native Admin UI (dev) — login password + master key',
         generateSecretString: {
           secretStringTemplate: JSON.stringify({ username: 'admin' }),
           generateStringKey: 'password',
           excludePunctuation: true,
           passwordLength: 20,
+        },
+        removalPolicy: RemovalPolicy.DESTROY,
+      });
+      const uiMasterKeySecret = new secretsmanager.Secret(this, 'LiteLLMUiMasterKey', {
+        secretName: `${resourceName}-litellm-ui-master-key`,
+        description: 'LiteLLM native Admin UI (dev) — generated master key',
+        generateSecretString: {
+          secretStringTemplate: JSON.stringify({}),
+          generateStringKey: 'key',
+          excludePunctuation: true,
+          includeSpace: false,
+          passwordLength: 32,
         },
         removalPolicy: RemovalPolicy.DESTROY,
       });
@@ -413,12 +426,12 @@ export class AiGatewayStack extends Stack {
         image: ecs.ContainerImage.fromRegistry('ghcr.io/berriai/litellm-database:main-stable'),
         essential: true,
         environment: {
-          LITELLM_MASTER_KEY: litellmUiMasterKey,
           DATABASE_URL: 'postgresql://litellm:litellm@localhost:5432/litellm',
           STORE_MODEL_IN_DB: 'True',
           UI_USERNAME: 'admin',
         },
         secrets: {
+          LITELLM_MASTER_KEY: ecs.Secret.fromSecretsManager(uiMasterKeySecret, 'key'),
           UI_PASSWORD: ecs.Secret.fromSecretsManager(uiLoginSecret, 'password'),
         },
         portMappings: [{ containerPort: LLM_UI_PORT }],
@@ -473,6 +486,10 @@ export class AiGatewayStack extends Stack {
       new CfnOutput(this, 'LiteLLMUiLoginSecretArn', {
         value: uiLoginSecret.secretArn,
         description: 'Secrets Manager secret holding the LiteLLM UI admin password',
+      });
+      new CfnOutput(this, 'LiteLLMUiMasterKeySecretArn', {
+        value: uiMasterKeySecret.secretArn,
+        description: 'Secrets Manager secret holding the LiteLLM UI master key',
       });
     }
 

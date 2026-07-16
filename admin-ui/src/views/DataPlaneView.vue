@@ -13,15 +13,14 @@ const play = reactive({ key: "", model: "", prompt: "", sending: false, result: 
 
 async function refresh(): Promise<void> {
   error.value = null;
+  // Health probes self-heal (they never throw), so render them independently of
+  // the control-plane status() call — a failing status() must not blank the badges.
+  const [live, ready] = await Promise.all([dataPlane.liveness(), dataPlane.readiness()]);
+  liveness.value = live;
+  readiness.value = ready;
   try {
-    const [s, live, ready] = await Promise.all([
-      dataPlane.status(),
-      dataPlane.liveness(),
-      dataPlane.readiness(),
-    ]);
+    const s = await dataPlane.status();
     status.value = s;
-    liveness.value = live;
-    readiness.value = ready;
     if (!play.model && s.models.length) play.model = s.models[0].model_name;
   } catch (e) {
     error.value = (e as Error).message;

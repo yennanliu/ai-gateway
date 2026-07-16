@@ -6,8 +6,13 @@ the hermetic local suite. Point it at the deployed ALB:
 
     AIGW_E2E_BASE_URL=http://<alb>            \\   # governed control + data plane (:80)
     AIGW_LITELLM_UI_URL=http://<alb>:4001     \\   # isolated LiteLLM native UI
+    AIGW_LITELLM_UI_MASTER_KEY=<from secret>  \\   # enables the master-key admin check
     AIGW_LITELLM_UI_PASSWORD=<from secret>        # enables the UI login check
     uv run pytest tests/e2e/test_aws_deployment.py -v
+
+Both the master key and login password are generated at deploy time and stored in
+Secrets Manager (see the LiteLLMUiMasterKeySecretArn / LiteLLMUiLoginSecretArn
+stack outputs); fetch them with `aws secretsmanager get-secret-value`.
 
 These drive real HTTP against a running environment and create demo data
 (orgs/keys on the governed plane; a short-lived key in the LiteLLM UI's own
@@ -25,7 +30,9 @@ import pytest
 GOV_URL = os.environ.get("AIGW_E2E_BASE_URL", "").rstrip("/")
 UI_URL = os.environ.get("AIGW_LITELLM_UI_URL", "").rstrip("/")
 # The isolated dev instance's master key (also a valid UI login credential).
-UI_MASTER_KEY = os.environ.get("AIGW_LITELLM_UI_MASTER_KEY", "sk-aigw-litellm-ui-dev")
+# Generated at deploy time and stored in Secrets Manager — no default: the
+# master-key test is skipped unless the real value is supplied.
+UI_MASTER_KEY = os.environ.get("AIGW_LITELLM_UI_MASTER_KEY", "")
 UI_PASSWORD = os.environ.get("AIGW_LITELLM_UI_PASSWORD", "")
 
 gov = pytest.mark.skipif(not GOV_URL, reason="set AIGW_E2E_BASE_URL to the governed ALB base")
@@ -134,6 +141,7 @@ def test_ui_pages_served(ui_client: httpx.Client) -> None:
 
 
 @ui
+@pytest.mark.skipif(not UI_MASTER_KEY, reason="set AIGW_LITELLM_UI_MASTER_KEY for the admin check")
 def test_ui_master_key_admin_api_and_own_key_store(ui_client: httpx.Client) -> None:
     headers = {"Authorization": f"Bearer {UI_MASTER_KEY}"}
     assert ui_client.get("/models", headers=headers).status_code == 200
