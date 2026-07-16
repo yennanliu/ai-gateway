@@ -181,10 +181,10 @@ npx cdk deploy -c appName=ai-gateway -c version=v1   # build + push images, crea
 Outputs include `AdminUiUrl`, `ControlPlaneUrl`, and `GatewayUrl`. To serve a real
 request with no API keys: enable model access in the **Amazon Bedrock** console,
 register a `bedrock` model in the admin UI, then roll the data plane so it
-recompiles its config (`aws ecs update-service --cluster <ClusterName> --service
+recompiles its config (`aws ecs update-service --cluster ai-gateway-v1-cluster --service
 ai-gateway-v1-data-plane --force-new-deployment`), and call
 `POST {GatewayUrl}/chat/completions` with a virtual key. Tear down with
-`npx cdk destroy -c version=v1`.
+`npx cdk destroy -c appName=ai-gateway -c version=v1`.
 
 Full architecture, rationale, the phased rollout (HA, scale, multi-tenancy, CI/CD),
 security, and cost: [`doc/aws-cdk-deployment.md`](doc/aws-cdk-deployment.md);
