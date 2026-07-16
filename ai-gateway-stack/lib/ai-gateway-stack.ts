@@ -79,7 +79,7 @@ export class AiGatewayStack extends Stack {
     // =====================================================================
     const dbSecurityGroup = new ec2.SecurityGroup(this, 'DbSg', {
       vpc,
-      description: 'AI Gateway RDS — ingress from the gateway services only',
+      description: 'AI Gateway RDS - ingress from the gateway services only',
       allowAllOutbound: false,
     });
 
