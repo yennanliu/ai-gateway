@@ -1,6 +1,7 @@
 import type {
   Budget,
   BudgetAlert,
+  DataPlaneStatus,
   KeyIssued,
   ModelDeployment,
   Team,
@@ -75,4 +76,62 @@ export const budgets = {
   upsert: (body: { scope_type: string; scope_id: string; limit: string }) =>
     api<Budget>("PUT", "/api/v1/budgets", body),
   alerts: () => api<BudgetAlert[]>("GET", "/api/v1/budgets/alerts"),
+};
+
+// --- Data plane ------------------------------------------------------------
+// The proxy's own /health/* and /v1/* live behind the same edge as /api, so the
+// browser reaches them same-origin (the ALB path-routes them to the data plane;
+// locally Vite proxies /health and /v1 to :4000). Health probes never throw —
+// they resolve to a status the badge can render.
+
+export interface LivenessProbe {
+  ok: boolean;
+  detail: string;
+}
+
+export interface ReadinessProbe {
+  ok: boolean;
+  status: string;
+  db: string;
+}
+
+export interface ChatResult {
+  ok: boolean;
+  status: number;
+  body: string;
+}
+
+export const dataPlane = {
+  status: () => api<DataPlaneStatus>("GET", "/api/v1/data-plane/status"),
+
+  async liveness(): Promise<LivenessProbe> {
+    try {
+      const resp = await fetch("/health/liveliness", { headers: headersProvider() });
+      return { ok: resp.ok, detail: (await resp.text()).replace(/^"|"$/g, "") };
+    } catch (e) {
+      return { ok: false, detail: (e as Error).message };
+    }
+  },
+
+  async readiness(): Promise<ReadinessProbe> {
+    try {
+      const resp = await fetch("/health/readiness", { headers: headersProvider() });
+      const data = (await resp.json()) as { status?: string; db?: string };
+      return { ok: resp.ok, status: data.status ?? "down", db: data.db ?? "unknown" };
+    } catch (e) {
+      return { ok: false, status: "down", db: (e as Error).message };
+    }
+  },
+
+  /** Playground: a live completion through the gateway, authed by a virtual key
+   *  (NOT the dev principal headers) — this exercises the real /v1 path + our
+   *  custom-auth hook, exactly as an SDK client would. */
+  async chat(key: string, model: string, prompt: string): Promise<ChatResult> {
+    const resp = await fetch("/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }] }),
+    });
+    return { ok: resp.ok, status: resp.status, body: await resp.text() };
+  },
 };

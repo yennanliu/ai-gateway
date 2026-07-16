@@ -61,3 +61,17 @@ export interface BudgetAlert {
   soft_exceeded: boolean;
   hard_exceeded: boolean;
 }
+
+export interface DataPlaneModel {
+  model_name: string;
+  provider: string;
+  model: string;
+  tags: string[];
+}
+
+export interface DataPlaneStatus {
+  litellm_version: string;
+  routing: { routing_strategy?: string; num_retries?: number; fallbacks?: unknown[] };
+  models: DataPlaneModel[];
+  model_count: number;
+}

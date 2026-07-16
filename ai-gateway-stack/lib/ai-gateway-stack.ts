@@ -6,6 +6,7 @@ import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as path from 'path';
 import { Construct } from 'constructs';
 import { FargateAppService } from './constructs/fargate-app-service';
@@ -79,7 +80,7 @@ export class AiGatewayStack extends Stack {
     // =====================================================================
     const dbSecurityGroup = new ec2.SecurityGroup(this, 'DbSg', {
       vpc,
-      description: 'AI Gateway RDS — ingress from the gateway services only',
+      description: 'AI Gateway RDS - ingress from the gateway services only',
       allowAllOutbound: false,
     });
 
@@ -336,6 +337,161 @@ export class AiGatewayStack extends Stack {
       entryPoint: ['/bin/sh', '-c'],
       command: [`${exportDbUrl} && exec uv run --package governance-api python scripts/seed.py`],
     });
+
+    // =====================================================================
+    // Optional · LiteLLM's own Admin UI (dev/demo) — enable with `-c litellmUi=true`
+    // =====================================================================
+    // A SEPARATE, isolated LiteLLM proxy that runs LiteLLM's *native* admin UI
+    // on its OWN throwaway Postgres. It deliberately does not touch the governed
+    // data plane, our RDS, or our virtual keys: LiteLLM's UI requires LiteLLM's
+    // own key store + master key — the very layer the governed plane replaces
+    // (system-design §4.1). So we stand it up on its own so it can be explored
+    // without reintroducing that dependency into the product path.
+    //
+    // Exposed on a DEDICATED ALB listener (:4001) so it serves at the root path
+    // (`/ui`) with no path collision with the governed routes on :80. It is
+    // granted NO provider (Bedrock) permissions, so even the known dev master
+    // key cannot turn it into an open proxy. Postgres runs as an in-task sidecar
+    // (ephemeral — the LiteLLM key store resets on task restart, which is fine
+    // for a demo). Tear down by redeploying without the flag.
+    const litellmUiCtx = this.node.tryGetContext('litellmUi');
+    const enableLiteLLMUi = litellmUiCtx === true || litellmUiCtx === 'true';
+    if (enableLiteLLMUi) {
+      const LLM_UI_PORT = 4000; // LiteLLM's default listen port (inside the task)
+      const LLM_UI_EDGE = 4001; // public ALB listener for the native UI
+
+      // UI login password AND master key are both generated (not known constants)
+      // and kept in Secrets Manager, so the public listener has no guessable admin
+      // credential. The master key controls only THIS isolated demo instance (no
+      // real data, no provider access) and can also log in to the UI. LiteLLM
+      // matches the master key with a plain constant-time compare, so no `sk-`
+      // prefix is needed. Fetch both after deploy (see outputs).
+      const uiLoginSecret = new secretsmanager.Secret(this, 'LiteLLMUiLogin', {
+        secretName: `${resourceName}-litellm-ui-login`,
+        description: 'LiteLLM native Admin UI (dev) — login password + master key',
+        generateSecretString: {
+          secretStringTemplate: JSON.stringify({ username: 'admin' }),
+          generateStringKey: 'password',
+          excludePunctuation: true,
+          passwordLength: 20,
+        },
+        removalPolicy: RemovalPolicy.DESTROY,
+      });
+      const uiMasterKeySecret = new secretsmanager.Secret(this, 'LiteLLMUiMasterKey', {
+        secretName: `${resourceName}-litellm-ui-master-key`,
+        description: 'LiteLLM native Admin UI (dev) — generated master key',
+        generateSecretString: {
+          secretStringTemplate: JSON.stringify({}),
+          generateStringKey: 'key',
+          excludePunctuation: true,
+          includeSpace: false,
+          passwordLength: 32,
+        },
+        removalPolicy: RemovalPolicy.DESTROY,
+      });
+
+      const litellmUiTask = new ecs.FargateTaskDefinition(this, 'LiteLLMUiTask', {
+        cpu: 1024,
+        memoryLimitMiB: 2048,
+      });
+
+      // In-task Postgres sidecar (localhost) — LiteLLM's UI needs its own DB.
+      const pg = litellmUiTask.addContainer('litellm-db', {
+        image: ecs.ContainerImage.fromRegistry('postgres:16'),
+        essential: true,
+        environment: {
+          POSTGRES_USER: 'litellm',
+          POSTGRES_PASSWORD: 'litellm',
+          POSTGRES_DB: 'litellm',
+          // Keep the throwaway store off the (ephemeral) root fs default is fine.
+          PGDATA: '/var/lib/postgresql/data/pgdata',
+        },
+        // Reached over localhost by the litellm-ui container in the same task;
+        // CDK still requires a declared port on the definition.
+        portMappings: [{ containerPort: 5432 }],
+        logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'litellm-ui-db', logGroup }),
+        healthCheck: {
+          command: ['CMD-SHELL', 'pg_isready -U litellm -d litellm'],
+          interval: Duration.seconds(10),
+          timeout: Duration.seconds(5),
+          retries: 10,
+          startPeriod: Duration.seconds(30),
+        },
+      });
+
+      // LiteLLM's OFFICIAL image (ships prisma + the Admin UI). Env-only boot:
+      // with DATABASE_URL + LITELLM_MASTER_KEY it migrates its schema and serves
+      // /ui with an empty model list (add models in the UI; STORE_MODEL_IN_DB).
+      const litellmUi = litellmUiTask.addContainer('litellm-ui', {
+        image: ecs.ContainerImage.fromRegistry('ghcr.io/berriai/litellm-database:main-stable'),
+        essential: true,
+        environment: {
+          DATABASE_URL: 'postgresql://litellm:litellm@localhost:5432/litellm',
+          STORE_MODEL_IN_DB: 'True',
+          UI_USERNAME: 'admin',
+        },
+        secrets: {
+          LITELLM_MASTER_KEY: ecs.Secret.fromSecretsManager(uiMasterKeySecret, 'key'),
+          UI_PASSWORD: ecs.Secret.fromSecretsManager(uiLoginSecret, 'password'),
+        },
+        portMappings: [{ containerPort: LLM_UI_PORT }],
+        logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'litellm-ui', logGroup }),
+      });
+      litellmUi.addContainerDependencies({
+        container: pg,
+        condition: ecs.ContainerDependencyCondition.HEALTHY,
+      });
+
+      const litellmUiService = new ecs.FargateService(this, 'LiteLLMUiService', {
+        cluster,
+        serviceName: `${resourceName}-litellm-ui`,
+        taskDefinition: litellmUiTask,
+        desiredCount: 1,
+        vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+        healthCheckGracePeriod: Duration.seconds(240), // prisma migrate + boot
+        minHealthyPercent: 100,
+        circuitBreaker: { rollback: true },
+      });
+
+      const litellmUiListener = alb.addListener('LiteLLMUi', {
+        port: LLM_UI_EDGE,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        open: true,
+      });
+      litellmUiListener.addTargets('LiteLLMUiTarget', {
+        port: LLM_UI_PORT,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        // Bind the target to the litellm-ui container explicitly. The task also
+        // runs a Postgres sidecar (port 5432); without naming the container the
+        // ALB can register the wrong one and health-check Postgres over HTTP.
+        targets: [
+          litellmUiService.loadBalancerTarget({
+            containerName: 'litellm-ui',
+            containerPort: LLM_UI_PORT,
+          }),
+        ],
+        deregistrationDelay: Duration.seconds(30),
+        healthCheck: {
+          path: '/health/liveliness',
+          healthyHttpCodes: '200-399',
+          interval: Duration.seconds(30),
+          timeout: Duration.seconds(10),
+        },
+      });
+
+      new CfnOutput(this, 'LiteLLMUiUrl', {
+        value: `http://${alb.loadBalancerDnsName}:${LLM_UI_EDGE}/ui`,
+        description: "LiteLLM's OWN admin UI (dev/demo, isolated) — log in as admin",
+      });
+      new CfnOutput(this, 'LiteLLMUiLoginSecretArn', {
+        value: uiLoginSecret.secretArn,
+        description: 'Secrets Manager secret holding the LiteLLM UI admin password',
+      });
+      new CfnOutput(this, 'LiteLLMUiMasterKeySecretArn', {
+        value: uiMasterKeySecret.secretArn,
+        description: 'Secrets Manager secret holding the LiteLLM UI master key',
+      });
+    }
 
     // =====================================================================
     // Outputs
