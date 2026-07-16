@@ -13,7 +13,7 @@ export const HTML_LANG: Record<Locale, string> = {
 
 /** Nested message tree. `en` is the source of truth; `zh-TW` mirrors its shape. */
 export interface Messages {
-  nav: { dashboard: string; models: string; teams: string; keys: string; usage: string; budgets: string };
+  nav: { dashboard: string; models: string; teams: string; keys: string; usage: string; budgets: string; dataPlane: string };
   common: { totalCost: string; requests: string };
   app: { signOut: string; toLight: string; toDark: string; language: string };
   landing: {
@@ -74,11 +74,40 @@ export interface Messages {
     empty: string;
     th: { scope: string; limit: string; spent: string; period: string };
   };
+  dataPlane: {
+    title: string;
+    subtitle: string;
+    liveness: string;
+    readiness: string;
+    litellmVersion: string;
+    modelsTitle: string;
+    routing: string;
+    strategy: string;
+    retries: string;
+    fallbacks: string;
+    none: string;
+    emptyModels: string;
+    th: { name: string; provider: string; model: string; tags: string };
+    playground: {
+      title: string;
+      subtitle: string;
+      key: string;
+      keyPlaceholder: string;
+      model: string;
+      prompt: string;
+      promptPlaceholder: string;
+      send: string;
+      sending: string;
+      response: string;
+      noModels: string;
+    };
+  };
   health: { healthy: string; degraded: string; down: string };
 }
 
 const en: Messages = {
   nav: {
+    dataPlane: "Data Plane",
     dashboard: "Dashboard",
     models: "Models",
     teams: "Teams",
@@ -181,11 +210,40 @@ const en: Messages = {
     empty: "No budgets set.",
     th: { scope: "Scope", limit: "Limit", spent: "Spent", period: "Period" },
   },
+  dataPlane: {
+    title: "Data Plane",
+    subtitle: "The LiteLLM proxy's live health and the effective config compiled from your registry.",
+    liveness: "Liveness",
+    readiness: "Readiness",
+    litellmVersion: "LiteLLM version",
+    modelsTitle: "Configured models",
+    routing: "Routing",
+    strategy: "Strategy",
+    retries: "Retries",
+    fallbacks: "Fallbacks",
+    none: "none",
+    emptyModels: "No models configured yet — register one under Models, then roll the data plane.",
+    th: { name: "Name", provider: "Provider", model: "Model", tags: "Tags" },
+    playground: {
+      title: "Playground",
+      subtitle: "Send a live request through the gateway with a virtual key.",
+      key: "Virtual key",
+      keyPlaceholder: "sk-ag-…",
+      model: "Model",
+      prompt: "Prompt",
+      promptPlaceholder: "Say hello to the gateway…",
+      send: "Send",
+      sending: "Sending…",
+      response: "Response",
+      noModels: "Register and roll out a model first to use the playground.",
+    },
+  },
   health: { healthy: "Healthy", degraded: "Degraded", down: "Down" },
 };
 
 const zhTW: Messages = {
   nav: {
+    dataPlane: "資料層",
     dashboard: "儀表板",
     models: "模型",
     teams: "團隊",
@@ -287,6 +345,34 @@ const zhTW: Messages = {
     overThreshold: "{n} 筆預算已超過門檻",
     empty: "尚未設定預算。",
     th: { scope: "範圍", limit: "上限", spent: "已花費", period: "週期" },
+  },
+  dataPlane: {
+    title: "資料層",
+    subtitle: "LiteLLM 代理的即時健康狀態，以及從你的登錄檔編譯出的有效設定。",
+    liveness: "存活狀態",
+    readiness: "就緒狀態",
+    litellmVersion: "LiteLLM 版本",
+    modelsTitle: "已設定的模型",
+    routing: "路由",
+    strategy: "策略",
+    retries: "重試次數",
+    fallbacks: "備援",
+    none: "無",
+    emptyModels: "尚未設定任何模型 — 請先於「模型」頁登錄，再重啟資料層。",
+    th: { name: "名稱", provider: "供應商", model: "模型", tags: "標籤" },
+    playground: {
+      title: "測試場",
+      subtitle: "使用虛擬金鑰透過閘道發送即時請求。",
+      key: "虛擬金鑰",
+      keyPlaceholder: "sk-ag-…",
+      model: "模型",
+      prompt: "提示詞",
+      promptPlaceholder: "向閘道打聲招呼…",
+      send: "發送",
+      sending: "發送中…",
+      response: "回應",
+      noModels: "請先登錄並部署模型後再使用測試場。",
+    },
   },
   health: { healthy: "正常", degraded: "降級", down: "中斷" },
 };

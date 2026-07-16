@@ -14,6 +14,10 @@ export default defineConfig({
     proxy: {
       // Dev: forward API calls to the governance-api.
       "/api": "http://localhost:8080",
+      // Dev: the data plane's own surfaces go straight to the LiteLLM proxy.
+      // (On AWS the ALB path-routes these; locally we proxy them here.)
+      "/health": "http://localhost:4000",
+      "/v1": "http://localhost:4000",
     },
   },
   test: {

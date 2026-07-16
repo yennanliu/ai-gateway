@@ -10,5 +10,10 @@ export const router = createRouter({
     { path: "/keys", name: "keys", component: () => import("@/views/KeysView.vue") },
     { path: "/usage", name: "usage", component: () => import("@/views/UsageView.vue") },
     { path: "/budgets", name: "budgets", component: () => import("@/views/BudgetsView.vue") },
+    {
+      path: "/data-plane",
+      name: "data-plane",
+      component: () => import("@/views/DataPlaneView.vue"),
+    },
   ],
 });

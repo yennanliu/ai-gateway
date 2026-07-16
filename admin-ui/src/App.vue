@@ -38,6 +38,7 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
         <RouterLink to="/keys">{{ $t("nav.keys") }}</RouterLink>
         <RouterLink to="/usage">{{ $t("nav.usage") }}</RouterLink>
         <RouterLink to="/budgets">{{ $t("nav.budgets") }}</RouterLink>
+        <RouterLink to="/data-plane">{{ $t("nav.dataPlane") }}</RouterLink>
       </nav>
       <span class="spacer" />
       <div ref="langMenu" class="lang">

@@ -12,6 +12,7 @@ from governance_api.api import (
     apps,
     billing,
     config,
+    data_plane,
     keys,
     memberships,
     models,
@@ -43,6 +44,7 @@ OPENAPI_TAGS = [
     {"name": "keys", "description": "Virtual key lifecycle (issue/rotate/revoke)."},
     {"name": "registry", "description": "Provider credentials + model deployments."},
     {"name": "config", "description": "Compile & reload the LiteLLM proxy config."},
+    {"name": "data-plane", "description": "Effective data-plane config (models + routing)."},
     {"name": "billing", "description": "Usage aggregation, invoices, budgets, rate cards."},
 ]
 
@@ -69,7 +71,8 @@ def create_app() -> FastAPI:
         lifespan=_lifespan,
     )
 
-    for module in (orgs, teams, users, memberships, apps, keys, models, config, billing):
+    routers = (orgs, teams, users, memberships, apps, keys, models, config, data_plane, billing)
+    for module in routers:
         app.include_router(module.router)
 
     @app.get("/healthz", tags=["system"])
