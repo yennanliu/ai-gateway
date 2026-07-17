@@ -81,16 +81,40 @@ def _default_session_factory() -> Session:
 open_session: Callable[[], Session] = _default_session_factory
 
 
+async def _requested_model(request: object) -> str | None:
+    """Best-effort extraction of the target model from the proxy request body.
+
+    LiteLLM hands custom-auth the raw ``fastapi.Request``. Starlette caches the
+    body on first read (``request._body``), so reading it here is idempotent --
+    the proxy's own later read gets the cached bytes. Any failure (no request,
+    non-JSON body, missing/blank ``model``) yields ``None``, which the pure
+    ``authenticate`` treats as "model unknown -> allowlist not applicable".
+    """
+    json_method = getattr(request, "json", None)
+    if json_method is None:
+        return None
+    try:
+        body = await json_method()
+    except Exception:  # noqa: BLE001 - never let body parsing turn auth into a 500
+        return None
+    model = body.get("model") if isinstance(body, dict) else None
+    return model if isinstance(model, str) and model else None
+
+
 async def user_api_key_auth(request: object, api_key: str):  # noqa: ANN201 - LiteLLM type
-    """LiteLLM custom-auth entrypoint. Returns UserAPIKeyAuth or raises 401."""
+    """LiteLLM custom-auth entrypoint. Returns UserAPIKeyAuth or raises 401/403."""
     from fastapi import HTTPException
     from litellm.proxy._types import UserAPIKeyAuth
 
+    requested_model = await _requested_model(request)
     session = open_session()
     try:
-        ctx = authenticate(session, api_key)
+        ctx = authenticate(session, api_key, requested_model=requested_model)
     except AuthError as exc:
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
+        # A key that authenticates but is scoped away from the requested model is
+        # a 403 (authenticated, not authorized); anything else is a 401.
+        status_code = 403 if "not allowed for this key" in str(exc) else 401
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     finally:
         session.close()
     # Carry our scope onto the auth object so the success-callback can attribute
