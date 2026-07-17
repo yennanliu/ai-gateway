@@ -23,6 +23,10 @@ class AuthError(Exception):
     """Raised when a virtual key is missing, revoked, expired, or out of scope."""
 
 
+class ModelNotAllowedError(AuthError):
+    """Key authenticates but is not scoped to the requested model (maps to 403)."""
+
+
 @dataclass(frozen=True)
 class AuthContext:
     key_id: str
@@ -60,7 +64,7 @@ def authenticate(
     if _expired(key.expires_at):
         raise AuthError("API key has expired")
     if requested_model and key.allowed_models and requested_model not in key.allowed_models:
-        raise AuthError(f"model '{requested_model}' is not allowed for this key")
+        raise ModelNotAllowedError(f"model '{requested_model}' is not allowed for this key")
     team = session.get(Team, key.team_id)
     return AuthContext(
         key_id=key.id,
@@ -81,15 +85,52 @@ def _default_session_factory() -> Session:
 open_session: Callable[[], Session] = _default_session_factory
 
 
+async def _requested_model(request: object) -> str | None:
+    """Best-effort extraction of the target model from the proxy request body.
+
+    LiteLLM hands custom-auth the raw ``fastapi.Request``. Starlette caches the
+    body on first read (``request._body``), so reading it here is idempotent --
+    the proxy's own later read gets the cached bytes. Any failure (no request,
+    non-JSON body, missing/blank ``model``) yields ``None``, which the pure
+    ``authenticate`` treats as "model unknown -> allowlist not applicable".
+
+    We gate on Content-Type first: custom-auth runs for *every* ``/v1/*`` route,
+    including large multipart uploads (``/v1/audio/transcriptions``, ``/v1/files``).
+    Calling ``.json()`` on those would make Starlette buffer the whole payload into
+    memory only to fail parsing -- a needless DoS surface. JSON chat/completion
+    requests (where the allowlist matters) are unaffected.
+    """
+    headers = getattr(request, "headers", None)
+    if headers is not None and hasattr(headers, "get"):
+        content_type = headers.get("content-type") or headers.get("Content-Type") or ""
+        if "application/json" not in content_type.lower():
+            return None
+
+    json_method = getattr(request, "json", None)
+    if json_method is None:
+        return None
+    try:
+        body = await json_method()
+    except Exception:  # noqa: BLE001 - never let body parsing turn auth into a 500
+        return None
+    model = body.get("model") if isinstance(body, dict) else None
+    return model if isinstance(model, str) and model else None
+
+
 async def user_api_key_auth(request: object, api_key: str):  # noqa: ANN201 - LiteLLM type
-    """LiteLLM custom-auth entrypoint. Returns UserAPIKeyAuth or raises 401."""
+    """LiteLLM custom-auth entrypoint. Returns UserAPIKeyAuth or raises 401/403."""
     from fastapi import HTTPException
     from litellm.proxy._types import UserAPIKeyAuth
 
+    requested_model = await _requested_model(request)
     session = open_session()
     try:
-        ctx = authenticate(session, api_key)
+        ctx = authenticate(session, api_key, requested_model=requested_model)
+    except ModelNotAllowedError as exc:
+        # Authenticated but scoped away from the requested model -> 403 (forbidden).
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except AuthError as exc:
+        # Missing / invalid / revoked / expired key -> 401 (unauthenticated).
         raise HTTPException(status_code=401, detail=str(exc)) from exc
     finally:
         session.close()

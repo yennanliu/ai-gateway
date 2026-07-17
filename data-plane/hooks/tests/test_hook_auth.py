@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi import HTTPException
 from hooks import auth as authmod
-from hooks.auth import AuthContext, AuthError, _expired, authenticate
+from hooks.auth import AuthContext, AuthError, ModelNotAllowedError, _expired, authenticate
 from sqlalchemy.orm import Session, sessionmaker
 
 from governance_api.db.models import Org, Team, VirtualKey
@@ -91,8 +91,11 @@ def test_future_expiry_allowed(db: Session) -> None:
 
 def test_model_not_allowed(db: Session) -> None:
     plaintext, _, _ = _seed_key(db, allowed=["gpt-4o"])
-    with pytest.raises(AuthError, match="not allowed"):
+    # A scoped-away model raises the typed subclass (mapped to 403 by the adapter),
+    # which is still an AuthError so generic handlers keep working.
+    with pytest.raises(ModelNotAllowedError, match="not allowed"):
         authenticate(db, plaintext, requested_model="claude-sonnet-5")
+    assert issubclass(ModelNotAllowedError, AuthError)
 
 
 def test_model_allowed(db: Session) -> None:
@@ -120,6 +123,70 @@ async def test_adapter_returns_user_api_key_auth(
     # our scope + rpm_limit must ride on the auth object for the pre-call hook.
     assert result.key_alias == key.id
     assert result.rpm_limit == 7
+
+
+class _FakeRequest:
+    """Minimal stand-in for the fastapi.Request LiteLLM hands custom-auth."""
+
+    def __init__(self, body: object, content_type: str = "application/json") -> None:
+        self._body = body
+        self.headers = {"content-type": content_type}
+
+    async def json(self) -> object:
+        return self._body
+
+
+async def test_adapter_enforces_allowlist_from_request_body(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The gap this closes: the entrypoint must read the requested model from the
+    # request body and feed it to authenticate(), or per-key allowlists are dead.
+    plaintext, _, _ = _seed_key(db, allowed=["demo-gpt"])
+    monkeypatch.setattr(authmod, "open_session", lambda: sessionmaker(bind=db.get_bind())())
+    req = _FakeRequest({"model": "demo-claude", "messages": []})
+    with pytest.raises(HTTPException) as exc:
+        await authmod.user_api_key_auth(req, plaintext)
+    assert exc.value.status_code == 403  # authenticated but out of scope
+    assert "not allowed" in str(exc.value.detail)
+
+
+async def test_adapter_skips_allowlist_for_non_json_content_type(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # custom-auth runs for large multipart uploads (audio/files) too; we must NOT
+    # buffer + parse those as JSON. A non-JSON request skips the allowlist (model
+    # unknown) and authenticates rather than erroring.
+    plaintext, key, _ = _seed_key(db, allowed=["demo-gpt"])
+    monkeypatch.setattr(authmod, "open_session", lambda: sessionmaker(bind=db.get_bind())())
+    req = _FakeRequest({"model": "demo-claude"}, content_type="multipart/form-data; boundary=x")
+    result = await authmod.user_api_key_auth(req, plaintext)
+    assert result.key_alias == key.id  # allowlist not applied -> not a 403
+
+
+async def test_adapter_allows_model_in_allowlist(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plaintext, key, _ = _seed_key(db, allowed=["demo-gpt"])
+    monkeypatch.setattr(authmod, "open_session", lambda: sessionmaker(bind=db.get_bind())())
+    req = _FakeRequest({"model": "demo-gpt", "messages": []})
+    result = await authmod.user_api_key_auth(req, plaintext)
+    assert result.key_alias == key.id
+
+
+async def test_adapter_unparsable_body_skips_allowlist(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A body we can't parse must not turn auth into a 500; the request proceeds
+    # (allowlist simply not applied) rather than crashing the proxy.
+    plaintext, _, _ = _seed_key(db, allowed=["demo-gpt"])
+    monkeypatch.setattr(authmod, "open_session", lambda: sessionmaker(bind=db.get_bind())())
+
+    class _BadRequest:
+        async def json(self) -> object:
+            raise ValueError("not JSON")
+
+    result = await authmod.user_api_key_auth(_BadRequest(), plaintext)
+    assert result is not None
 
 
 async def test_adapter_rejects_bad_key_with_401(
