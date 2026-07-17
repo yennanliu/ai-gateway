@@ -23,6 +23,10 @@ class AuthError(Exception):
     """Raised when a virtual key is missing, revoked, expired, or out of scope."""
 
 
+class ModelNotAllowedError(AuthError):
+    """Key authenticates but is not scoped to the requested model (maps to 403)."""
+
+
 @dataclass(frozen=True)
 class AuthContext:
     key_id: str
@@ -60,7 +64,7 @@ def authenticate(
     if _expired(key.expires_at):
         raise AuthError("API key has expired")
     if requested_model and key.allowed_models and requested_model not in key.allowed_models:
-        raise AuthError(f"model '{requested_model}' is not allowed for this key")
+        raise ModelNotAllowedError(f"model '{requested_model}' is not allowed for this key")
     team = session.get(Team, key.team_id)
     return AuthContext(
         key_id=key.id,
@@ -89,7 +93,19 @@ async def _requested_model(request: object) -> str | None:
     the proxy's own later read gets the cached bytes. Any failure (no request,
     non-JSON body, missing/blank ``model``) yields ``None``, which the pure
     ``authenticate`` treats as "model unknown -> allowlist not applicable".
+
+    We gate on Content-Type first: custom-auth runs for *every* ``/v1/*`` route,
+    including large multipart uploads (``/v1/audio/transcriptions``, ``/v1/files``).
+    Calling ``.json()`` on those would make Starlette buffer the whole payload into
+    memory only to fail parsing -- a needless DoS surface. JSON chat/completion
+    requests (where the allowlist matters) are unaffected.
     """
+    headers = getattr(request, "headers", None)
+    if headers is not None and hasattr(headers, "get"):
+        content_type = headers.get("content-type") or headers.get("Content-Type") or ""
+        if "application/json" not in content_type.lower():
+            return None
+
     json_method = getattr(request, "json", None)
     if json_method is None:
         return None
@@ -110,11 +126,12 @@ async def user_api_key_auth(request: object, api_key: str):  # noqa: ANN201 - Li
     session = open_session()
     try:
         ctx = authenticate(session, api_key, requested_model=requested_model)
+    except ModelNotAllowedError as exc:
+        # Authenticated but scoped away from the requested model -> 403 (forbidden).
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except AuthError as exc:
-        # A key that authenticates but is scoped away from the requested model is
-        # a 403 (authenticated, not authorized); anything else is a 401.
-        status_code = 403 if "not allowed for this key" in str(exc) else 401
-        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+        # Missing / invalid / revoked / expired key -> 401 (unauthenticated).
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
     finally:
         session.close()
     # Carry our scope onto the auth object so the success-callback can attribute
